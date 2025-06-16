@@ -1,0 +1,12 @@
+body {
+  margin: 0;
+  overflow: hidden;
+  background: #89cff0; /* Light blue water background */
+}
+
+canvas {
+  display: block;
+  margin: 0 auto;
+  background: #89cff0;
+  border: 2px solid #333;
+}
