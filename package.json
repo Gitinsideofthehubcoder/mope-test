@@ -1,0 +1,12 @@
+{
+  "name": "mope-io-prototype",
+  "version": "1.0.0",
+  "description": "A simple mope.io-like prototype",
+  "scripts": {
+    "dev": "serve public",
+    "start": "serve public"
+  },
+  "dependencies": {
+    "serve": "^14.0.1"
+  }
+}
