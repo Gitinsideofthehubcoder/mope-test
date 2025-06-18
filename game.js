@@ -18,12 +18,13 @@ let player = {
   y: canvas.height / 2,
   radius: 40,
   speed: 2.0,
-  vx: 0,   // velocity X
-  vy: 0,   // velocity Y
+  vx: 0,
+  vy: 0,
+  angle: 0,  // angle in radians for rotation
   score: 0
 };
 
-// ✅ Mouse position tracking
+// ✅ Mouse tracking
 let mouse = { x: player.x, y: player.y };
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
@@ -81,27 +82,24 @@ function checkEvolution() {
 function update() {
   if (menu.style.display !== 'none') return;
 
-  // --- 🐾 Smooth move toward mouse ---
+  // 🐾 Smooth movement toward mouse
   const dx = mouse.x - player.x;
   const dy = mouse.y - player.y;
   const distance = Math.hypot(dx, dy);
 
   if (distance > 1) {
-    // Normalize direction
     const dirX = dx / distance;
     const dirY = dy / distance;
-
-    // Accelerate towards mouse
-    const accel = 0.2;  // adjust for snappiness
+    const accel = 0.2;
     player.vx += dirX * accel;
     player.vy += dirY * accel;
   }
 
-  // Apply friction for smooth stop
-  player.vx *= 0.9;  // adjust for friction
+  // Friction
+  player.vx *= 0.9;
   player.vy *= 0.9;
 
-  // Apply max speed limit based on animal speed
+  // Speed limit
   const speedLimit = player.speed;
   const vTotal = Math.hypot(player.vx, player.vy);
   if (vTotal > speedLimit) {
@@ -112,6 +110,9 @@ function update() {
   // Update position
   player.x += player.vx;
   player.y += player.vy;
+
+  // 🔑 Update angle — use arctangent of velocity
+  player.angle = Math.atan2(player.vy, player.vx);
 
   // Stay in bounds
   player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
@@ -144,7 +145,7 @@ function update() {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw food
+  // Food
   ctx.fillStyle = 'green';
   foods.forEach(f => {
     ctx.beginPath();
@@ -152,17 +153,22 @@ function draw() {
     ctx.fill();
   });
 
-  // Draw player icon
+  // Player: draw rotated icon
   const animal = animals[player.level];
   const img = animalImages[animal.name];
+
   if (img.complete) {
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(player.angle); // rotate to current angle
     ctx.drawImage(
       img,
-      player.x - player.radius,
-      player.y - player.radius,
+      -player.radius,  // draw centered
+      -player.radius,
       player.radius * 2,
       player.radius * 2
     );
+    ctx.restore();
   } else {
     // fallback circle
     ctx.fillStyle = animal.color;
