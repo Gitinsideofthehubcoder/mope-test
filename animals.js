@@ -1,8 +1,8 @@
-import { landAnimals } from './animals-part-1.js';
-import { oceanAnimals } from './animals-part-2.js';
-import { arcticAnimals } from './animals-part-3.js';
-import { desertAnimals } from './animals-part-4.js';
-import { mythicalAnimals } from './animals-part-5.js';
+import { landAnimals } from './landAnimals.js';
+import { oceanAnimals } from './oceanAnimals.js';
+import { arcticAnimals } from './arcticAnimals.js';
+import { desertAnimals } from './desertAnimals.js';
+import { mythicalAnimals } from './mythicalAnimals.js';
 
 export const animals = [
   ...landAnimals,
