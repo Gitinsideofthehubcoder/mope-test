@@ -1,9 +1,11 @@
+// Import combined animals list from split files
 import { animals } from './animals.js';
 
+// Setup canvas
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// ✅ Auto-resize to screen resolution
+// Auto-resize to full screen resolution
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -11,7 +13,7 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-// ✅ Preload icons
+// Preload all animal icons
 const animalImages = {};
 animals.forEach(animal => {
   const img = new Image();
@@ -19,11 +21,11 @@ animals.forEach(animal => {
   animalImages[animal.name] = img;
 });
 
-// ✅ Big world dimensions
+// World dimensions
 const worldWidth = 5000;
 const worldHeight = 5000;
 
-// ✅ Player with real world position
+// Player object with world position
 let player = {
   level: 0,
   worldX: worldWidth / 2,
@@ -36,7 +38,7 @@ let player = {
   score: 0
 };
 
-// ✅ Mouse relative to screen center
+// Mouse tracking relative to canvas
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
@@ -44,14 +46,15 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Food items with world coordinates
-let foods = Array.from({ length: 300 }, () => ({
+// Food dots (initial 300)
+const FOOD_COUNT = 300;
+let foods = Array.from({ length: FOOD_COUNT }, () => ({
   x: Math.random() * worldWidth,
   y: Math.random() * worldHeight,
   radius: 5 + Math.random() * 5
 }));
 
-// ✅ Upgrade menu
+// Upgrade menu
 const menu = document.createElement('div');
 menu.style.position = 'absolute';
 menu.style.top = '50%';
@@ -92,9 +95,7 @@ function checkEvolution() {
 }
 
 function update() {
-  if (menu.style.display !== 'none') return;
-
-  // 🐾 Direction from player center to mouse cursor
+  // 🐾 Always move toward mouse, even if upgrade menu open
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
   const dx = mouse.x - centerX;
@@ -145,7 +146,8 @@ function update() {
     return true;
   });
 
-  while (foods.length < 300) {
+  // Keep food count constant
+  while (foods.length < FOOD_COUNT) {
     foods.push({
       x: Math.random() * worldWidth,
       y: Math.random() * worldHeight,
@@ -159,15 +161,15 @@ function update() {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Camera offset: player stays centered
+  // Camera offset so player stays centered
   const offsetX = player.worldX - canvas.width / 2;
   const offsetY = player.worldY - canvas.height / 2;
 
-  // Draw background (optional grid or color)
+  // Draw map background
   ctx.fillStyle = "#cceeff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw foods relative to camera
+  // Draw food dots relative to camera
   ctx.fillStyle = 'green';
   foods.forEach(f => {
     const screenX = f.x - offsetX;
@@ -177,13 +179,13 @@ function draw() {
     ctx.fill();
   });
 
-  // Draw player at screen center, rotated
+  // Draw player icon at center, rotated
   const animal = animals[player.level];
   const img = animalImages[animal.name];
 
   if (img.complete) {
     ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2); // player always at center
+    ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate(player.angle);
     ctx.drawImage(
       img,
