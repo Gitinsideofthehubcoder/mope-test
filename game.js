@@ -1,7 +1,5 @@
-// ✅ Import the combined animals list (which itself imports the parts)
 import { animals } from './animals.js';
 
-// ✅ Setup canvas
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -9,7 +7,7 @@ const ctx = canvas.getContext('2d');
 const animalImages = {};
 animals.forEach(animal => {
   const img = new Image();
-  img.src = animal.icon; // from the 'icon' field in your split files
+  img.src = animal.icon;
   animalImages[animal.name] = img;
 });
 
@@ -18,22 +16,27 @@ let player = {
   level: 0,
   x: canvas.width / 2,
   y: canvas.height / 2,
-  radius: 40,  // sets size for drawImage
+  radius: 40,
   speed: 2.0,
+  vx: 0,   // velocity X
+  vy: 0,   // velocity Y
   score: 0
 };
 
-// ✅ Initial food blobs
+// ✅ Mouse position tracking
+let mouse = { x: player.x, y: player.y };
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = e.clientX - rect.left;
+  mouse.y = e.clientY - rect.top;
+});
+
+// ✅ Initial food
 let foods = Array.from({ length: 20 }, () => ({
   x: Math.random() * canvas.width,
   y: Math.random() * canvas.height,
   radius: 5 + Math.random() * 5
 }));
-
-// ✅ Keyboard controls
-let keys = {};
-window.addEventListener('keydown', e => keys[e.key] = true);
-window.addEventListener('keyup', e => keys[e.key] = false);
 
 // ✅ Upgrade menu
 const menu = document.createElement('div');
@@ -55,7 +58,7 @@ function openUpgradeMenu(options) {
     btn.style.margin = '5px';
     btn.onclick = () => {
       player.level = animals.findIndex(a => a.name === opt.name);
-      player.radius = 40 + player.level * 2; // increase size slightly
+      player.radius = 40 + player.level * 2;
       player.speed = 2.0 + player.level * 0.05;
       menu.style.display = 'none';
     };
@@ -71,32 +74,58 @@ function checkEvolution() {
     a.evolveScore <= player.score
   );
   if (nextOptions.length > 0 && menu.style.display === 'none') {
-    openUpgradeMenu(nextOptions.slice(0, 4)); // show up to 4 options
+    openUpgradeMenu(nextOptions.slice(0, 4));
   }
 }
 
 function update() {
-  if (menu.style.display !== 'none') return; // pause when choosing
+  if (menu.style.display !== 'none') return;
 
-  // Movement
-  if (keys['ArrowUp']) player.y -= player.speed;
-  if (keys['ArrowDown']) player.y += player.speed;
-  if (keys['ArrowLeft']) player.x -= player.speed;
-  if (keys['ArrowRight']) player.x += player.speed;
+  // --- 🐾 Smooth move toward mouse ---
+  const dx = mouse.x - player.x;
+  const dy = mouse.y - player.y;
+  const distance = Math.hypot(dx, dy);
 
-  // Bounds
+  if (distance > 1) {
+    // Normalize direction
+    const dirX = dx / distance;
+    const dirY = dy / distance;
+
+    // Accelerate towards mouse
+    const accel = 0.2;  // adjust for snappiness
+    player.vx += dirX * accel;
+    player.vy += dirY * accel;
+  }
+
+  // Apply friction for smooth stop
+  player.vx *= 0.9;  // adjust for friction
+  player.vy *= 0.9;
+
+  // Apply max speed limit based on animal speed
+  const speedLimit = player.speed;
+  const vTotal = Math.hypot(player.vx, player.vy);
+  if (vTotal > speedLimit) {
+    player.vx = (player.vx / vTotal) * speedLimit;
+    player.vy = (player.vy / vTotal) * speedLimit;
+  }
+
+  // Update position
+  player.x += player.vx;
+  player.y += player.vy;
+
+  // Stay in bounds
   player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
   player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
 
   // Eat food
   foods = foods.filter(f => {
-    const dx = player.x - f.x;
-    const dy = player.y - f.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    const fx = player.x - f.x;
+    const fy = player.y - f.y;
+    const dist = Math.hypot(fx, fy);
     if (dist < player.radius + f.radius) {
-      player.radius += 0.2; // grow slightly
+      player.radius += 0.2;
       player.score += 1;
-      return false; // remove eaten food
+      return false;
     }
     return true;
   });
@@ -115,7 +144,7 @@ function update() {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw food blobs
+  // Draw food
   ctx.fillStyle = 'green';
   foods.forEach(f => {
     ctx.beginPath();
@@ -123,7 +152,7 @@ function draw() {
     ctx.fill();
   });
 
-  // Draw player animal icon
+  // Draw player icon
   const animal = animals[player.level];
   const img = animalImages[animal.name];
   if (img.complete) {
@@ -135,7 +164,7 @@ function draw() {
       player.radius * 2
     );
   } else {
-    // fallback if image not loaded yet
+    // fallback circle
     ctx.fillStyle = animal.color;
     ctx.beginPath();
     ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
@@ -143,7 +172,7 @@ function draw() {
     ctx.stroke();
   }
 
-  // HUD info
+  // HUD
   ctx.fillStyle = 'black';
   ctx.font = '20px Arial';
   ctx.fillText(`Score: ${player.score}`, 10, 20);
