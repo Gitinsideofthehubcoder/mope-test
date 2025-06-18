@@ -1,9 +1,19 @@
+// ✅ Import the combined animals list
 import { animals } from './animals.js';
 
+// ✅ Setup canvas + context
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// ✅ Preload animal icons
+// ✅ Make canvas auto-fill the real screen resolution
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ✅ Preload all animal icons
 const animalImages = {};
 animals.forEach(animal => {
   const img = new Image();
@@ -11,7 +21,7 @@ animals.forEach(animal => {
   animalImages[animal.name] = img;
 });
 
-// ✅ Player state
+// ✅ Player object
 let player = {
   level: 0,
   x: canvas.width / 2,
@@ -20,11 +30,11 @@ let player = {
   speed: 2.0,
   vx: 0,
   vy: 0,
-  angle: 0,  // angle in radians for rotation
+  angle: 0,
   score: 0
 };
 
-// ✅ Mouse tracking
+// ✅ Mouse tracking for movement target
 let mouse = { x: player.x, y: player.y };
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
@@ -32,14 +42,14 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Initial food
+// ✅ Initial food items
 let foods = Array.from({ length: 20 }, () => ({
   x: Math.random() * canvas.width,
   y: Math.random() * canvas.height,
   radius: 5 + Math.random() * 5
 }));
 
-// ✅ Upgrade menu
+// ✅ Upgrade menu for evolving animals
 const menu = document.createElement('div');
 menu.style.position = 'absolute';
 menu.style.top = '50%';
@@ -99,7 +109,7 @@ function update() {
   player.vx *= 0.9;
   player.vy *= 0.9;
 
-  // Speed limit
+  // Max speed limit
   const speedLimit = player.speed;
   const vTotal = Math.hypot(player.vx, player.vy);
   if (vTotal > speedLimit) {
@@ -111,10 +121,10 @@ function update() {
   player.x += player.vx;
   player.y += player.vy;
 
-  // 🔑 Update angle — use arctangent of velocity
+  // 🔑 Compute facing angle from velocity
   player.angle = Math.atan2(player.vy, player.vx);
 
-  // Stay in bounds
+  // Stay inside screen
   player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
   player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
 
@@ -131,6 +141,7 @@ function update() {
     return true;
   });
 
+  // Keep enough food
   while (foods.length < 20) {
     foods.push({
       x: Math.random() * canvas.width,
@@ -145,7 +156,7 @@ function update() {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Food
+  // Draw food dots
   ctx.fillStyle = 'green';
   foods.forEach(f => {
     ctx.beginPath();
@@ -153,24 +164,23 @@ function draw() {
     ctx.fill();
   });
 
-  // Player: draw rotated icon
+  // Draw rotated player icon
   const animal = animals[player.level];
   const img = animalImages[animal.name];
 
   if (img.complete) {
     ctx.save();
     ctx.translate(player.x, player.y);
-    ctx.rotate(player.angle); // rotate to current angle
+    ctx.rotate(player.angle);  // face movement direction
     ctx.drawImage(
       img,
-      -player.radius,  // draw centered
+      -player.radius,
       -player.radius,
       player.radius * 2,
       player.radius * 2
     );
     ctx.restore();
   } else {
-    // fallback circle
     ctx.fillStyle = animal.color;
     ctx.beginPath();
     ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
@@ -178,11 +188,11 @@ function draw() {
     ctx.stroke();
   }
 
-  // HUD
+  // Draw HUD
   ctx.fillStyle = 'black';
   ctx.font = '20px Arial';
-  ctx.fillText(`Score: ${player.score}`, 10, 20);
-  ctx.fillText(`Animal: ${animal.name} (${animal.biome})`, 10, 45);
+  ctx.fillText(`Score: ${player.score}`, 10, 30);
+  ctx.fillText(`Animal: ${animal.name} (${animal.biome})`, 10, 55);
 }
 
 function loop() {
