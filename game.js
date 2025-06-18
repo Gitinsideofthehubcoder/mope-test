@@ -1,11 +1,11 @@
-// Import combined animals list from split files
+// Import animals from split files
 import { animals } from './animals.js';
 
-// Setup canvas
+// Canvas setup
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Auto-resize to full screen resolution
+// Auto fullscreen
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -13,7 +13,7 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-// Preload all animal icons
+// Preload animal icons
 const animalImages = {};
 animals.forEach(animal => {
   const img = new Image();
@@ -25,20 +25,20 @@ animals.forEach(animal => {
 const worldWidth = 5000;
 const worldHeight = 5000;
 
-// Player object with world position
+// Player state with world coordinates
 let player = {
   level: 0,
   worldX: worldWidth / 2,
   worldY: worldHeight / 2,
   radius: 40,
-  speed: 2.0,
+  speed: 2.0, // Max movement speed
   vx: 0,
   vy: 0,
   angle: 0,
   score: 0
 };
 
-// Mouse tracking relative to canvas
+// Mouse tracking (relative to canvas)
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
@@ -46,7 +46,7 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// Food dots (initial 300)
+// Food
 const FOOD_COUNT = 300;
 let foods = Array.from({ length: FOOD_COUNT }, () => ({
   x: Math.random() * worldWidth,
@@ -95,17 +95,22 @@ function checkEvolution() {
 }
 
 function update() {
-  // 🐾 Always move toward mouse, even if upgrade menu open
+  // Screen center = player visual position
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
+
   const dx = mouse.x - centerX;
   const dy = mouse.y - centerY;
   const distance = Math.hypot(dx, dy);
 
+  // ✅ Smart speed factor: closer = slower
+  const speedFactor = Math.min(distance / 100, 1);
+
+  // Apply acceleration toward cursor, scaled by factor
   if (distance > 1) {
     const dirX = dx / distance;
     const dirY = dy / distance;
-    const accel = 0.2;
+    const accel = 0.2 * speedFactor;
     player.vx += dirX * accel;
     player.vy += dirY * accel;
   }
@@ -114,22 +119,22 @@ function update() {
   player.vx *= 0.9;
   player.vy *= 0.9;
 
-  // Limit speed
-  const speedLimit = player.speed;
+  // Max speed scaled by factor
+  const maxSpeed = player.speed * speedFactor;
   const vTotal = Math.hypot(player.vx, player.vy);
-  if (vTotal > speedLimit) {
-    player.vx = (player.vx / vTotal) * speedLimit;
-    player.vy = (player.vy / vTotal) * speedLimit;
+  if (vTotal > maxSpeed) {
+    player.vx = (player.vx / vTotal) * maxSpeed;
+    player.vy = (player.vy / vTotal) * maxSpeed;
   }
 
   // Update world position
   player.worldX += player.vx;
   player.worldY += player.vy;
 
-  // Update facing angle
+  // Update rotation
   player.angle = Math.atan2(player.vy, player.vx);
 
-  // Stay inside map
+  // Stay in bounds
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
 
@@ -146,7 +151,6 @@ function update() {
     return true;
   });
 
-  // Keep food count constant
   while (foods.length < FOOD_COUNT) {
     foods.push({
       x: Math.random() * worldWidth,
@@ -165,11 +169,11 @@ function draw() {
   const offsetX = player.worldX - canvas.width / 2;
   const offsetY = player.worldY - canvas.height / 2;
 
-  // Draw map background
+  // Optional background
   ctx.fillStyle = "#cceeff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw food dots relative to camera
+  // Draw food dots
   ctx.fillStyle = 'green';
   foods.forEach(f => {
     const screenX = f.x - offsetX;
