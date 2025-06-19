@@ -35,7 +35,8 @@ let player = {
   vx: 0,
   vy: 0,
   angle: 0,
-  score: 0
+  score: 0,
+  maxSpeed: 2.0 // dynamic max speed, changes on boost
 };
 
 // Mouse
@@ -46,9 +47,10 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Boost impulse with cooldown
+// ✅ Boost impulse with temporary speed limit and cooldown
 let canBoost = true;
-const boostCooldown = 2000; // 2 seconds
+const boostCooldown = 2000; // ms
+const boostDuration = 500; // ms
 
 function doBoost() {
   if (!canBoost) return;
@@ -59,15 +61,21 @@ function doBoost() {
   const dy = mouse.y - centerY;
   const distance = Math.hypot(dx, dy);
 
-  if (distance < 5) return; // Don't boost if mouse is exactly centered
+  if (distance < 5) return; // No boost if mouse at center
 
   const dirX = dx / distance;
   const dirY = dy / distance;
 
-  const boostStrength = 10; // adjust boost power here
-
+  const boostStrength = 20; // BIG impulse for real push
   player.vx += dirX * boostStrength;
   player.vy += dirY * boostStrength;
+
+  // Allow higher speed for a short time to keep the impulse
+  player.maxSpeed = player.baseSpeed * 4;
+
+  setTimeout(() => {
+    player.maxSpeed = player.baseSpeed; // back to normal
+  }, boostDuration);
 
   canBoost = false;
   setTimeout(() => {
@@ -112,6 +120,7 @@ function openUpgradeMenu(options) {
       player.level = animals.findIndex(a => a.name === opt.name);
       player.radius = 40 + player.level * 2;
       player.baseSpeed = 2.0 + player.level * 0.05;
+      player.maxSpeed = player.baseSpeed;
       menu.style.display = 'none';
     };
     menu.appendChild(btn);
@@ -138,9 +147,7 @@ function update() {
   const dy = mouse.y - centerY;
   const distance = Math.hypot(dx, dy);
 
-  // Regular movement factor: closer = slower
   const speedFactor = Math.min(distance / 100, 1);
-  const maxSpeed = player.baseSpeed;
 
   if (distance > 1) {
     const dirX = dx / distance;
@@ -154,8 +161,8 @@ function update() {
   player.vx *= 0.9;
   player.vy *= 0.9;
 
-  // Limit speed
-  const finalMax = maxSpeed * speedFactor;
+  // Clamp to current maxSpeed (base or boosted)
+  const finalMax = player.maxSpeed * speedFactor;
   const vTotal = Math.hypot(player.vx, player.vy);
   if (vTotal > finalMax) {
     player.vx = (player.vx / vTotal) * finalMax;
