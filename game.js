@@ -31,7 +31,9 @@ let player = {
   worldX: worldWidth / 2,
   worldY: worldHeight / 2,
   radius: 40,
-  baseSpeed: 100.0,   // ✅ Faster base speed (was 2.0)
+
+  baseSpeed: 3.0,   // 🟢 normal comfortable cruising speed
+  maxSpeed: 5.0,    // 🟢 absolute top speed limit
   vx: 0,
   vy: 0,
   angle: 0,
@@ -46,11 +48,11 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Boost as single impulse, no force vector
+// ✅ Boost: one-time impulse
 let canBoost = true;
 let boostHeld = false;
-const boostCooldown = 1500;   // 1.5 sec cooldown
-const boostImpulse = 6.0;     // ✅ Stronger boost (was 5.0)
+const boostCooldown = 1500;   // ms
+const boostImpulse = 6.0;     // one-time push
 
 function startBoost() {
   if (!canBoost) return;
@@ -111,7 +113,8 @@ function openUpgradeMenu(options) {
     btn.onclick = () => {
       player.level = animals.findIndex(a => a.name === opt.name);
       player.radius = 40 + player.level * 2;
-      player.baseSpeed = 3.0 + player.level * 0.05;  // ✅ Keep base speed boost per level
+      player.baseSpeed = 3.0 + player.level * 0.05;
+      player.maxSpeed = 5.0 + player.level * 0.05; // consistent upgrade
       menu.style.display = 'none';
     };
     menu.appendChild(btn);
@@ -139,39 +142,39 @@ function update() {
 
   const speedFactor = Math.min(dist / 100, 1);
 
-  // ✅ Stronger steering force for quicker acceleration
+  // ✅ STRONGER steering force for clear acceleration
   if (dist > 1) {
     const dirX = dx / dist;
     const dirY = dy / dist;
-    const steer = 0.3 * speedFactor;  // ✅ Was 0.2
+    const steer = 0.6 * speedFactor; // ⏫ more push per frame!
     player.vx += dirX * steer;
     player.vy += dirY * steer;
   }
 
-  // Trigger boost if holding & ready
+  // ✅ Trigger boost if holding and ready
   if (boostHeld && canBoost) {
     startBoost();
   }
 
-  // Friction
-  player.vx *= 0.9;
-  player.vy *= 0.9;
+  // ✅ Softer friction: keeps speed higher
+  player.vx *= 0.93;
+  player.vy *= 0.93;
 
-  // Clamp speed when not boosted
-  const maxSpeed = player.baseSpeed;
+  // ✅ Clamp to clear max speed limit (independent of mouse distance!)
   const vTotal = Math.hypot(player.vx, player.vy);
-  if (vTotal > maxSpeed * speedFactor && boostHeld === false) {
-    player.vx = (player.vx / vTotal) * maxSpeed * speedFactor;
-    player.vy = (player.vy / vTotal) * maxSpeed * speedFactor;
+  if (vTotal > player.maxSpeed) {
+    player.vx = (player.vx / vTotal) * player.maxSpeed;
+    player.vy = (player.vy / vTotal) * player.maxSpeed;
   }
 
-  // Move
+  // Update position
   player.worldX += player.vx;
   player.worldY += player.vy;
 
+  // Facing angle follows current velocity
   player.angle = Math.atan2(player.vy, player.vx);
 
-  // Keep inside map
+  // Keep inside world bounds
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
 
