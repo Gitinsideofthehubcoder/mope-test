@@ -25,25 +25,36 @@ animals.forEach(animal => {
 const worldWidth = 5000;
 const worldHeight = 5000;
 
-// Player state with world coordinates
+// Player state
 let player = {
   level: 0,
   worldX: worldWidth / 2,
   worldY: worldHeight / 2,
   radius: 40,
-  speed: 2.0, // Max movement speed
+  baseSpeed: 2.0,  // base speed (max normal)
   vx: 0,
   vy: 0,
   angle: 0,
   score: 0
 };
 
-// Mouse tracking (relative to canvas)
+// Mouse tracking
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
   mouse.x = e.clientX - rect.left;
   mouse.y = e.clientY - rect.top;
+});
+
+// ✅ Boost state
+let isBoosting = false;
+
+// Listen for left-click (button 0)
+window.addEventListener('mousedown', (e) => {
+  if (e.button === 0) isBoosting = true;
+});
+window.addEventListener('mouseup', (e) => {
+  if (e.button === 0) isBoosting = false;
 });
 
 // Food
@@ -75,7 +86,7 @@ function openUpgradeMenu(options) {
     btn.onclick = () => {
       player.level = animals.findIndex(a => a.name === opt.name);
       player.radius = 40 + player.level * 2;
-      player.speed = 2.0 + player.level * 0.05;
+      player.baseSpeed = 2.0 + player.level * 0.05;
       menu.style.display = 'none';
     };
     menu.appendChild(btn);
@@ -95,7 +106,6 @@ function checkEvolution() {
 }
 
 function update() {
-  // Screen center = player visual position
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
 
@@ -103,14 +113,18 @@ function update() {
   const dy = mouse.y - centerY;
   const distance = Math.hypot(dx, dy);
 
+  // ✅ Boost multiplier
+  const boostMultiplier = isBoosting ? 2.0 : 1.0;
+  const maxSpeed = player.baseSpeed * boostMultiplier;
+
   // ✅ Smart speed factor: closer = slower
   const speedFactor = Math.min(distance / 100, 1);
 
-  // Apply acceleration toward cursor, scaled by factor
+  // Apply acceleration scaled by factor
   if (distance > 1) {
     const dirX = dx / distance;
     const dirY = dy / distance;
-    const accel = 0.2 * speedFactor;
+    const accel = 0.2 * speedFactor * boostMultiplier;
     player.vx += dirX * accel;
     player.vy += dirY * accel;
   }
@@ -119,22 +133,22 @@ function update() {
   player.vx *= 0.9;
   player.vy *= 0.9;
 
-  // Max speed scaled by factor
-  const maxSpeed = player.speed * speedFactor;
+  // Limit speed, scaled by factor
+  const finalMax = maxSpeed * speedFactor;
   const vTotal = Math.hypot(player.vx, player.vy);
-  if (vTotal > maxSpeed) {
-    player.vx = (player.vx / vTotal) * maxSpeed;
-    player.vy = (player.vy / vTotal) * maxSpeed;
+  if (vTotal > finalMax) {
+    player.vx = (player.vx / vTotal) * finalMax;
+    player.vy = (player.vy / vTotal) * finalMax;
   }
 
   // Update world position
   player.worldX += player.vx;
   player.worldY += player.vy;
 
-  // Update rotation
+  // Facing angle
   player.angle = Math.atan2(player.vy, player.vx);
 
-  // Stay in bounds
+  // Bounds
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
 
@@ -165,15 +179,15 @@ function update() {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Camera offset so player stays centered
+  // Camera offset
   const offsetX = player.worldX - canvas.width / 2;
   const offsetY = player.worldY - canvas.height / 2;
 
-  // Optional background
+  // Background
   ctx.fillStyle = "#cceeff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw food dots
+  // Food
   ctx.fillStyle = 'green';
   foods.forEach(f => {
     const screenX = f.x - offsetX;
@@ -183,10 +197,9 @@ function draw() {
     ctx.fill();
   });
 
-  // Draw player icon at center, rotated
+  // Player icon centered, rotated
   const animal = animals[player.level];
   const img = animalImages[animal.name];
-
   if (img.complete) {
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
@@ -212,6 +225,10 @@ function draw() {
   ctx.font = '20px Arial';
   ctx.fillText(`Score: ${player.score}`, 10, 30);
   ctx.fillText(`Animal: ${animal.name} (${animal.biome})`, 10, 55);
+  if (isBoosting) {
+    ctx.fillStyle = 'red';
+    ctx.fillText(`BOOSTING!`, 10, 80);
+  }
 }
 
 function loop() {
