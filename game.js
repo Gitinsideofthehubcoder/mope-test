@@ -46,51 +46,27 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Boost system: force locked to facing direction at boost start
+// ✅ Boost as single impulse, no force vector
 let canBoost = true;
 let boostHeld = false;
-let boosting = false;
-let boostForce = { x: 0, y: 0 };
 const boostCooldown = 1500;   // 1.5 sec cooldown
-const boostDuration = 500;    // boost active for 0.5 sec
-const boostPower = 0.8;       // moderate push
+const boostImpulse = 5.0;     // big one-time push
 
 function startBoost() {
   if (!canBoost) return;
 
-  boosting = true;
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const dx = mouse.x - centerX;
+  const dy = mouse.y - centerY;
+  const dist = Math.hypot(dx, dy);
 
-  // 🔑 Lock boost force to current facing direction
-  const speed = Math.hypot(player.vx, player.vy);
-  let dirX, dirY;
-
-  // If moving, use velocity direction; else use mouse direction
-  if (speed > 0.01) {
-    dirX = player.vx / speed;
-    dirY = player.vy / speed;
-  } else {
-    // fallback to mouse if player is nearly stopped
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const dx = mouse.x - centerX;
-    const dy = mouse.y - centerY;
-    const dist = Math.hypot(dx, dy);
-    if (dist > 1) {
-      dirX = dx / dist;
-      dirY = dy / dist;
-    } else {
-      dirX = 1; dirY = 0; // default right
-    }
+  if (dist > 1) {
+    const dirX = dx / dist;
+    const dirY = dy / dist;
+    player.vx += dirX * boostImpulse;
+    player.vy += dirY * boostImpulse;
   }
-
-  boostForce.x = dirX * boostPower;
-  boostForce.y = dirY * boostPower;
-
-  setTimeout(() => {
-    boosting = false;
-    boostForce.x = 0;
-    boostForce.y = 0;
-  }, boostDuration);
 
   canBoost = false;
   setTimeout(() => {
@@ -172,25 +148,19 @@ function update() {
     player.vy += dirY * steer;
   }
 
-  // Apply boost force (locked direction)
-  if (boosting) {
-    player.vx += boostForce.x;
-    player.vy += boostForce.y;
-  }
-
   // Trigger boost if holding & ready
   if (boostHeld && canBoost) {
     startBoost();
   }
 
-  // Friction slows motion naturally
+  // Friction
   player.vx *= 0.9;
   player.vy *= 0.9;
 
-  // Clamp speed when not boosting
+  // Clamp normal speed (not needed for boost impulse)
   const maxSpeed = player.baseSpeed;
   const vTotal = Math.hypot(player.vx, player.vy);
-  if (!boosting && vTotal > maxSpeed * speedFactor) {
+  if (vTotal > maxSpeed * speedFactor && boostHeld === false) {
     player.vx = (player.vx / vTotal) * maxSpeed * speedFactor;
     player.vy = (player.vy / vTotal) * maxSpeed * speedFactor;
   }
