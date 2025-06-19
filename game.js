@@ -46,48 +46,47 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Boost physics with smooth steering
+// ✅ Boost system with steerable force
 let canBoost = true;
+let boostHeld = false;
 let boosting = false;
-const boostCooldown = 1500; // 1.5 sec
-const boostDuration = 500;  // ms
-const boostStrength = 20;   // impulse
+let boostForce = { x: 0, y: 0 };
+const boostCooldown = 1500;
+const boostDuration = 500;
+const boostPower = 2.0;  // boost force magnitude
 
-function doBoost() {
+// Trigger boost
+function startBoost() {
   if (!canBoost) return;
 
+  boosting = true;
+
+  // Set initial boost force toward mouse
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
   const dx = mouse.x - centerX;
   const dy = mouse.y - centerY;
-  const distance = Math.hypot(dx, dy);
+  const dist = Math.hypot(dx, dy);
+  if (dist > 1) {
+    boostForce.x = (dx / dist) * boostPower;
+    boostForce.y = (dy / dist) * boostPower;
+  }
 
-  if (distance < 5) return;
-
-  const dirX = dx / distance;
-  const dirY = dy / distance;
-
-  // Add strong impulse — natural merge
-  player.vx += dirX * boostStrength;
-  player.vy += dirY * boostStrength;
-
-  // Mark boost state for physics
-  boosting = true;
-
-  // Return to normal after boostDuration
+  // Stop boost after duration
   setTimeout(() => {
     boosting = false;
+    boostForce.x = 0;
+    boostForce.y = 0;
   }, boostDuration);
 
-  // Cooldown
+  // Start cooldown
   canBoost = false;
   setTimeout(() => {
     canBoost = true;
   }, boostCooldown);
 }
 
-// Hold left click to repeat boost
-let boostHeld = false;
+// Hold for repeat boost
 window.addEventListener('mousedown', (e) => {
   if (e.button === 0) boostHeld = true;
 });
@@ -146,33 +145,47 @@ function checkEvolution() {
 function update() {
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
-
   const dx = mouse.x - centerX;
   const dy = mouse.y - centerY;
-  const distance = Math.hypot(dx, dy);
+  const dist = Math.hypot(dx, dy);
 
-  const speedFactor = Math.min(distance / 100, 1);
+  const speedFactor = Math.min(dist / 100, 1);
 
-  // Apply gentle steering force toward mouse
-  if (distance > 1) {
-    const dirX = dx / distance;
-    const dirY = dy / distance;
-    const steerForce = 0.2 * speedFactor;
-    player.vx += dirX * steerForce;
-    player.vy += dirY * steerForce;
+  // ✅ Smooth steering force
+  if (dist > 1) {
+    const dirX = dx / dist;
+    const dirY = dy / dist;
+    const steer = 0.2 * speedFactor;
+    player.vx += dirX * steer;
+    player.vy += dirY * steer;
   }
 
-  // If holding boost and allowed, fire new boost impulse
+  // ✅ Boost steering: gently re-align boost force toward new cursor
+  if (boosting && dist > 1) {
+    const targetDirX = dx / dist;
+    const targetDirY = dy / dist;
+    // Slowly blend current boost vector toward new mouse direction
+    const blend = 0.2; // turning agility
+    boostForce.x = boostForce.x * (1 - blend) + targetDirX * boostPower * blend;
+    boostForce.y = boostForce.y * (1 - blend) + targetDirY * boostPower * blend;
+  }
+
+  // ✅ Add boost force to velocity
+  if (boosting) {
+    player.vx += boostForce.x;
+    player.vy += boostForce.y;
+  }
+
+  // Hold click = repeat boost
   if (boostHeld && canBoost) {
-    doBoost();
+    startBoost();
   }
 
-  // Natural friction always applies
+  // Friction
   player.vx *= 0.9;
   player.vy *= 0.9;
 
-  // ✅ No hard clamp during boost — allow natural momentum!
-  // If not boosting, softly cap speed
+  // Normal speed clamp only when not boosting
   const maxSpeed = player.baseSpeed;
   const vTotal = Math.hypot(player.vx, player.vy);
   if (!boosting && vTotal > maxSpeed * speedFactor) {
@@ -194,8 +207,8 @@ function update() {
   foods = foods.filter(f => {
     const fx = player.worldX - f.x;
     const fy = player.worldY - f.y;
-    const dist = Math.hypot(fx, fy);
-    if (dist < player.radius + f.radius) {
+    const d = Math.hypot(fx, fy);
+    if (d < player.radius + f.radius) {
       player.radius += 0.2;
       player.score += 1;
       return false;
