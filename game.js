@@ -52,7 +52,7 @@ canvas.addEventListener('mousemove', e => {
 let canBoost = true;
 let boostHeld = false;
 const boostCooldown = 1500;   // ms
-const boostImpulse = 6.0;     // one-time push
+const boostImpulse = 10.0;     // one-time push
 
 function startBoost() {
   if (!canBoost) return;
