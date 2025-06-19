@@ -1,4 +1,4 @@
-// Import animals from split files
+// Import animals
 import { animals } from './animals.js';
 
 // Canvas setup
@@ -13,7 +13,7 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-// Preload animal icons
+// Preload icons
 const animalImages = {};
 animals.forEach(animal => {
   const img = new Image();
@@ -21,24 +21,24 @@ animals.forEach(animal => {
   animalImages[animal.name] = img;
 });
 
-// World dimensions
+// World size
 const worldWidth = 5000;
 const worldHeight = 5000;
 
-// Player state
+// Player
 let player = {
   level: 0,
   worldX: worldWidth / 2,
   worldY: worldHeight / 2,
   radius: 40,
-  baseSpeed: 2.0,  // base speed (max normal)
+  baseSpeed: 2.0,
   vx: 0,
   vy: 0,
   angle: 0,
   score: 0
 };
 
-// Mouse tracking
+// Mouse
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
@@ -46,15 +46,25 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Boost state
+// ✅ Boost state with cooldown
 let isBoosting = false;
+let canBoost = true;
+const boostCooldown = 2000; // 2 seconds
 
-// Listen for left-click (button 0)
 window.addEventListener('mousedown', (e) => {
-  if (e.button === 0) isBoosting = true;
+  if (e.button === 0 && canBoost) {
+    isBoosting = true;
+  }
 });
 window.addEventListener('mouseup', (e) => {
-  if (e.button === 0) isBoosting = false;
+  if (e.button === 0 && isBoosting) {
+    isBoosting = false;
+    canBoost = false;  // block boost
+    // start cooldown timer
+    setTimeout(() => {
+      canBoost = true;
+    }, boostCooldown);
+  }
 });
 
 // Food
@@ -113,14 +123,13 @@ function update() {
   const dy = mouse.y - centerY;
   const distance = Math.hypot(dx, dy);
 
-  // ✅ Boost multiplier
-  const boostMultiplier = isBoosting ? 2.0 : 1.0;
+  // ✅ Use boost only if allowed
+  const boostMultiplier = (isBoosting && canBoost) ? 2.0 : 1.0;
   const maxSpeed = player.baseSpeed * boostMultiplier;
 
-  // ✅ Smart speed factor: closer = slower
+  // Smart speed factor
   const speedFactor = Math.min(distance / 100, 1);
 
-  // Apply acceleration scaled by factor
   if (distance > 1) {
     const dirX = dx / distance;
     const dirY = dy / distance;
@@ -133,7 +142,7 @@ function update() {
   player.vx *= 0.9;
   player.vy *= 0.9;
 
-  // Limit speed, scaled by factor
+  // Limit speed
   const finalMax = maxSpeed * speedFactor;
   const vTotal = Math.hypot(player.vx, player.vy);
   if (vTotal > finalMax) {
@@ -141,14 +150,13 @@ function update() {
     player.vy = (player.vy / vTotal) * finalMax;
   }
 
-  // Update world position
+  // Move
   player.worldX += player.vx;
   player.worldY += player.vy;
 
-  // Facing angle
   player.angle = Math.atan2(player.vy, player.vx);
 
-  // Bounds
+  // Stay in map
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
 
@@ -179,15 +187,12 @@ function update() {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Camera offset
   const offsetX = player.worldX - canvas.width / 2;
   const offsetY = player.worldY - canvas.height / 2;
 
-  // Background
   ctx.fillStyle = "#cceeff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Food
   ctx.fillStyle = 'green';
   foods.forEach(f => {
     const screenX = f.x - offsetX;
@@ -197,7 +202,6 @@ function draw() {
     ctx.fill();
   });
 
-  // Player icon centered, rotated
   const animal = animals[player.level];
   const img = animalImages[animal.name];
   if (img.complete) {
@@ -225,9 +229,12 @@ function draw() {
   ctx.font = '20px Arial';
   ctx.fillText(`Score: ${player.score}`, 10, 30);
   ctx.fillText(`Animal: ${animal.name} (${animal.biome})`, 10, 55);
-  if (isBoosting) {
+  if (isBoosting && canBoost) {
     ctx.fillStyle = 'red';
     ctx.fillText(`BOOSTING!`, 10, 80);
+  } else if (!canBoost) {
+    ctx.fillStyle = 'gray';
+    ctx.fillText(`Boost on cooldown...`, 10, 80);
   }
 }
 
