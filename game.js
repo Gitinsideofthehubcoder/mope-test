@@ -31,7 +31,7 @@ let player = {
   worldX: worldWidth / 2,
   worldY: worldHeight / 2,
   radius: 40,
-  baseSpeed: 2.0,
+  baseSpeed: 3.0,   // ✅ Faster base speed (was 2.0)
   vx: 0,
   vy: 0,
   angle: 0,
@@ -50,7 +50,7 @@ canvas.addEventListener('mousemove', e => {
 let canBoost = true;
 let boostHeld = false;
 const boostCooldown = 1500;   // 1.5 sec cooldown
-const boostImpulse = 5.0;     // big one-time push
+const boostImpulse = 6.0;     // ✅ Stronger boost (was 5.0)
 
 function startBoost() {
   if (!canBoost) return;
@@ -111,7 +111,7 @@ function openUpgradeMenu(options) {
     btn.onclick = () => {
       player.level = animals.findIndex(a => a.name === opt.name);
       player.radius = 40 + player.level * 2;
-      player.baseSpeed = 2.0 + player.level * 0.05;
+      player.baseSpeed = 3.0 + player.level * 0.05;  // ✅ Keep base speed boost per level
       menu.style.display = 'none';
     };
     menu.appendChild(btn);
@@ -139,11 +139,11 @@ function update() {
 
   const speedFactor = Math.min(dist / 100, 1);
 
-  // Smooth steering force
+  // ✅ Stronger steering force for quicker acceleration
   if (dist > 1) {
     const dirX = dx / dist;
     const dirY = dy / dist;
-    const steer = 0.2 * speedFactor;
+    const steer = 0.3 * speedFactor;  // ✅ Was 0.2
     player.vx += dirX * steer;
     player.vy += dirY * steer;
   }
@@ -157,7 +157,7 @@ function update() {
   player.vx *= 0.9;
   player.vy *= 0.9;
 
-  // Clamp normal speed (not needed for boost impulse)
+  // Clamp speed when not boosted
   const maxSpeed = player.baseSpeed;
   const vTotal = Math.hypot(player.vx, player.vy);
   if (vTotal > maxSpeed * speedFactor && boostHeld === false) {
@@ -171,7 +171,7 @@ function update() {
 
   player.angle = Math.atan2(player.vy, player.vx);
 
-  // Stay inside bounds
+  // Keep inside map
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
 
