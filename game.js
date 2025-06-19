@@ -31,7 +31,7 @@ let player = {
   worldX: worldWidth / 2,
   worldY: worldHeight / 2,
   radius: 40,
-  baseSpeed: 20.0,
+  baseSpeed: 2.0,
   vx: 0,
   vy: 0,
   angle: 0,
