@@ -46,24 +46,39 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Boost state with cooldown
-let isBoosting = false;
+// ✅ Boost impulse with cooldown
 let canBoost = true;
 const boostCooldown = 2000; // 2 seconds
 
+function doBoost() {
+  if (!canBoost) return;
+
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const dx = mouse.x - centerX;
+  const dy = mouse.y - centerY;
+  const distance = Math.hypot(dx, dy);
+
+  if (distance < 5) return; // Don't boost if mouse is exactly centered
+
+  const dirX = dx / distance;
+  const dirY = dy / distance;
+
+  const boostStrength = 10; // adjust boost power here
+
+  player.vx += dirX * boostStrength;
+  player.vy += dirY * boostStrength;
+
+  canBoost = false;
+  setTimeout(() => {
+    canBoost = true;
+  }, boostCooldown);
+}
+
+// Click = trigger boost impulse
 window.addEventListener('mousedown', (e) => {
-  if (e.button === 0 && canBoost) {
-    isBoosting = true;
-  }
-});
-window.addEventListener('mouseup', (e) => {
-  if (e.button === 0 && isBoosting) {
-    isBoosting = false;
-    canBoost = false;  // block boost
-    // start cooldown timer
-    setTimeout(() => {
-      canBoost = true;
-    }, boostCooldown);
+  if (e.button === 0) {
+    doBoost();
   }
 });
 
@@ -123,17 +138,14 @@ function update() {
   const dy = mouse.y - centerY;
   const distance = Math.hypot(dx, dy);
 
-  // ✅ Use boost only if allowed
-  const boostMultiplier = (isBoosting && canBoost) ? 2.0 : 1.0;
-  const maxSpeed = player.baseSpeed * boostMultiplier;
-
-  // Smart speed factor
+  // Regular movement factor: closer = slower
   const speedFactor = Math.min(distance / 100, 1);
+  const maxSpeed = player.baseSpeed;
 
   if (distance > 1) {
     const dirX = dx / distance;
     const dirY = dy / distance;
-    const accel = 0.2 * speedFactor * boostMultiplier;
+    const accel = 0.2 * speedFactor;
     player.vx += dirX * accel;
     player.vy += dirY * accel;
   }
@@ -229,10 +241,7 @@ function draw() {
   ctx.font = '20px Arial';
   ctx.fillText(`Score: ${player.score}`, 10, 30);
   ctx.fillText(`Animal: ${animal.name} (${animal.biome})`, 10, 55);
-  if (isBoosting && canBoost) {
-    ctx.fillStyle = 'red';
-    ctx.fillText(`BOOSTING!`, 10, 80);
-  } else if (!canBoost) {
+  if (!canBoost) {
     ctx.fillStyle = 'gray';
     ctx.fillText(`Boost on cooldown...`, 10, 80);
   }
