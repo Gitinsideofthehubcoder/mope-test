@@ -35,8 +35,7 @@ let player = {
   vx: 0,
   vy: 0,
   angle: 0,
-  score: 0,
-  maxSpeed: 2.0 // dynamic max speed, changes on boost
+  score: 0
 };
 
 // Mouse
@@ -47,48 +46,52 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Boost impulse with hold + 1.5s cooldown
+// ✅ Boost system with steerable force
 let canBoost = true;
+let boostHeld = false;
 let boosting = false;
-const boostCooldown = 1500; // 1.5 sec
-const boostDuration = 500; // ms
+let boostForce = { x: 0, y: 0 };
+const boostCooldown = 1500;
+const boostDuration = 500;
+const boostPower = 2.0;  // boost force magnitude
 
-function doBoost() {
+// Trigger boost
+function startBoost() {
   if (!canBoost) return;
 
+  boosting = true;
+
+  // Set initial boost force toward mouse
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
   const dx = mouse.x - centerX;
   const dy = mouse.y - centerY;
-  const distance = Math.hypot(dx, dy);
+  const dist = Math.hypot(dx, dy);
+  if (dist > 1) {
+    boostForce.x = (dx / dist) * boostPower;
+    boostForce.y = (dy / dist) * boostPower;
+  }
 
-  if (distance < 5) return; // No boost if mouse at center
-
-  const dirX = dx / distance;
-  const dirY = dy / distance;
-
-  const boostStrength = 20; // big push
-  player.vx += dirX * boostStrength;
-  player.vy += dirY * boostStrength;
-
-  // Allow higher speed for a short time
-  player.maxSpeed = player.baseSpeed * 4;
+  // Stop boost after duration
   setTimeout(() => {
-    player.maxSpeed = player.baseSpeed;
+    boosting = false;
+    boostForce.x = 0;
+    boostForce.y = 0;
   }, boostDuration);
 
+  // Start cooldown
   canBoost = false;
   setTimeout(() => {
     canBoost = true;
   }, boostCooldown);
 }
 
-// Holding left click repeatedly triggers boost if cooldown allows
+// Hold for repeat boost
 window.addEventListener('mousedown', (e) => {
-  if (e.button === 0) boosting = true;
+  if (e.button === 0) boostHeld = true;
 });
 window.addEventListener('mouseup', (e) => {
-  if (e.button === 0) boosting = false;
+  if (e.button === 0) boostHeld = false;
 });
 
 // Food
@@ -121,7 +124,6 @@ function openUpgradeMenu(options) {
       player.level = animals.findIndex(a => a.name === opt.name);
       player.radius = 40 + player.level * 2;
       player.baseSpeed = 2.0 + player.level * 0.05;
-      player.maxSpeed = player.baseSpeed;
       menu.style.display = 'none';
     };
     menu.appendChild(btn);
@@ -143,36 +145,52 @@ function checkEvolution() {
 function update() {
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
-
   const dx = mouse.x - centerX;
   const dy = mouse.y - centerY;
-  const distance = Math.hypot(dx, dy);
+  const dist = Math.hypot(dx, dy);
 
-  const speedFactor = Math.min(distance / 100, 1);
+  const speedFactor = Math.min(dist / 100, 1);
 
-  if (distance > 1) {
-    const dirX = dx / distance;
-    const dirY = dy / distance;
-    const accel = 0.2 * speedFactor;
-    player.vx += dirX * accel;
-    player.vy += dirY * accel;
+  // ✅ Smooth steering force
+  if (dist > 1) {
+    const dirX = dx / dist;
+    const dirY = dy / dist;
+    const steer = 0.2 * speedFactor;
+    player.vx += dirX * steer;
+    player.vy += dirY * steer;
   }
 
-  // ✅ Apply boost if holding and allowed
-  if (boosting && canBoost) {
-    doBoost();
+  // ✅ Boost steering: gently re-align boost force toward new cursor
+  if (boosting && dist > 1) {
+    const targetDirX = dx / dist;
+    const targetDirY = dy / dist;
+    // Slowly blend current boost vector toward new mouse direction
+    const blend = 0.2; // turning agility
+    boostForce.x = boostForce.x * (1 - blend) + targetDirX * boostPower * blend;
+    boostForce.y = boostForce.y * (1 - blend) + targetDirY * boostPower * blend;
+  }
+
+  // ✅ Add boost force to velocity
+  if (boosting) {
+    player.vx += boostForce.x;
+    player.vy += boostForce.y;
+  }
+
+  // Hold click = repeat boost
+  if (boostHeld && canBoost) {
+    startBoost();
   }
 
   // Friction
   player.vx *= 0.9;
   player.vy *= 0.9;
 
-  // Clamp to dynamic maxSpeed
-  const finalMax = player.maxSpeed * speedFactor;
+  // Normal speed clamp only when not boosting
+  const maxSpeed = player.baseSpeed;
   const vTotal = Math.hypot(player.vx, player.vy);
-  if (vTotal > finalMax) {
-    player.vx = (player.vx / vTotal) * finalMax;
-    player.vy = (player.vy / vTotal) * finalMax;
+  if (!boosting && vTotal > maxSpeed * speedFactor) {
+    player.vx = (player.vx / vTotal) * maxSpeed * speedFactor;
+    player.vy = (player.vy / vTotal) * maxSpeed * speedFactor;
   }
 
   // Move
@@ -189,8 +207,8 @@ function update() {
   foods = foods.filter(f => {
     const fx = player.worldX - f.x;
     const fy = player.worldY - f.y;
-    const dist = Math.hypot(fx, fy);
-    if (dist < player.radius + f.radius) {
+    const d = Math.hypot(fx, fy);
+    if (d < player.radius + f.radius) {
       player.radius += 0.2;
       player.score += 1;
       return false;
