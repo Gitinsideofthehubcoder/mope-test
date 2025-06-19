@@ -47,9 +47,10 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Boost impulse with temporary speed limit and cooldown
+// ✅ Boost impulse with hold + 1.5s cooldown
 let canBoost = true;
-const boostCooldown = 2000; // ms
+let boosting = false;
+const boostCooldown = 1500; // 1.5 sec
 const boostDuration = 500; // ms
 
 function doBoost() {
@@ -66,15 +67,14 @@ function doBoost() {
   const dirX = dx / distance;
   const dirY = dy / distance;
 
-  const boostStrength = 20; // BIG impulse for real push
+  const boostStrength = 20; // big push
   player.vx += dirX * boostStrength;
   player.vy += dirY * boostStrength;
 
-  // Allow higher speed for a short time to keep the impulse
+  // Allow higher speed for a short time
   player.maxSpeed = player.baseSpeed * 4;
-
   setTimeout(() => {
-    player.maxSpeed = player.baseSpeed; // back to normal
+    player.maxSpeed = player.baseSpeed;
   }, boostDuration);
 
   canBoost = false;
@@ -83,11 +83,12 @@ function doBoost() {
   }, boostCooldown);
 }
 
-// Click = trigger boost impulse
+// Holding left click repeatedly triggers boost if cooldown allows
 window.addEventListener('mousedown', (e) => {
-  if (e.button === 0) {
-    doBoost();
-  }
+  if (e.button === 0) boosting = true;
+});
+window.addEventListener('mouseup', (e) => {
+  if (e.button === 0) boosting = false;
 });
 
 // Food
@@ -157,11 +158,16 @@ function update() {
     player.vy += dirY * accel;
   }
 
+  // ✅ Apply boost if holding and allowed
+  if (boosting && canBoost) {
+    doBoost();
+  }
+
   // Friction
   player.vx *= 0.9;
   player.vy *= 0.9;
 
-  // Clamp to current maxSpeed (base or boosted)
+  // Clamp to dynamic maxSpeed
   const finalMax = player.maxSpeed * speedFactor;
   const vTotal = Math.hypot(player.vx, player.vy);
   if (vTotal > finalMax) {
@@ -175,7 +181,7 @@ function update() {
 
   player.angle = Math.atan2(player.vy, player.vx);
 
-  // Stay in map
+  // Bounds
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
 
