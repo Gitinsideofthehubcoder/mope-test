@@ -53,7 +53,7 @@ let boosting = false;
 let boostForce = { x: 0, y: 0 };
 const boostCooldown = 1500;   // 1.5 sec cooldown
 const boostDuration = 500;    // boost active for 0.5 sec
-const boostPower = 0.8;       // ✅ reduced for moderate push
+const boostPower = 0.4;       // ✅ reduced for moderate push
 
 function startBoost() {
   if (!canBoost) return;
