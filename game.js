@@ -46,30 +46,45 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Boost system with steerable force & reduced power
+// ✅ Boost system: force locked to facing direction at boost start
 let canBoost = true;
 let boostHeld = false;
 let boosting = false;
 let boostForce = { x: 0, y: 0 };
 const boostCooldown = 1500;   // 1.5 sec cooldown
 const boostDuration = 500;    // boost active for 0.5 sec
-const boostPower = 0.4;       // ✅ reduced for moderate push
+const boostPower = 0.8;       // moderate push
 
 function startBoost() {
   if (!canBoost) return;
 
   boosting = true;
 
-  // Initial boost force toward mouse
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  const dx = mouse.x - centerX;
-  const dy = mouse.y - centerY;
-  const dist = Math.hypot(dx, dy);
-  if (dist > 1) {
-    boostForce.x = (dx / dist) * boostPower;
-    boostForce.y = (dy / dist) * boostPower;
+  // 🔑 Lock boost force to current facing direction
+  const speed = Math.hypot(player.vx, player.vy);
+  let dirX, dirY;
+
+  // If moving, use velocity direction; else use mouse direction
+  if (speed > 0.01) {
+    dirX = player.vx / speed;
+    dirY = player.vy / speed;
+  } else {
+    // fallback to mouse if player is nearly stopped
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const dx = mouse.x - centerX;
+    const dy = mouse.y - centerY;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 1) {
+      dirX = dx / dist;
+      dirY = dy / dist;
+    } else {
+      dirX = 1; dirY = 0; // default right
+    }
   }
+
+  boostForce.x = dirX * boostPower;
+  boostForce.y = dirY * boostPower;
 
   setTimeout(() => {
     boosting = false;
@@ -157,27 +172,18 @@ function update() {
     player.vy += dirY * steer;
   }
 
-  // Boost steering: gently adjust boost force direction
-  if (boosting && dist > 1) {
-    const targetDirX = dx / dist;
-    const targetDirY = dy / dist;
-    const blend = 0.2; // smooth turning
-    boostForce.x = boostForce.x * (1 - blend) + targetDirX * boostPower * blend;
-    boostForce.y = boostForce.y * (1 - blend) + targetDirY * boostPower * blend;
-  }
-
-  // Apply boost force to velocity
+  // Apply boost force (locked direction)
   if (boosting) {
     player.vx += boostForce.x;
     player.vy += boostForce.y;
   }
 
-  // Trigger boost if holding & cooldown ready
+  // Trigger boost if holding & ready
   if (boostHeld && canBoost) {
     startBoost();
   }
 
-  // Friction
+  // Friction slows motion naturally
   player.vx *= 0.9;
   player.vy *= 0.9;
 
@@ -195,7 +201,7 @@ function update() {
 
   player.angle = Math.atan2(player.vy, player.vx);
 
-  // Keep player in bounds
+  // Stay inside bounds
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
 
