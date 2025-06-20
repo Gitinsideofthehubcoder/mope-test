@@ -58,11 +58,11 @@ const boostImpulse = 10.0;    // strong push
 function startBoost() {
   if (!canBoost) return;
 
-  // ✅ Use current velocity direction, fallback to facing if speed is too low
+  // ✅ Use current velocity direction; fallback to facing if nearly stopped
   let velAngle = Math.atan2(player.vy, player.vx);
   const speed = Math.hypot(player.vx, player.vy);
   if (speed < 0.1) {
-    velAngle = player.angle; // fallback: use facing direction
+    velAngle = player.angle;
   }
 
   const dirX = Math.cos(velAngle);
@@ -74,7 +74,7 @@ function startBoost() {
 
   setTimeout(() => {
     player.boosting = false;
-  }, 300); // boost duration
+  }, 300);
 
   canBoost = false;
   setTimeout(() => {
@@ -148,7 +148,7 @@ function update() {
 
   const speedFactor = Math.min(dist / 100, 1);
 
-  // ✅ Steering: weaker during boost for natural drift
+  // Steering: weaker during boost for natural drift
   if (dist > 1) {
     const dirX = dx / dist;
     const dirY = dy / dist;
@@ -178,7 +178,7 @@ function update() {
   player.worldX += player.vx;
   player.worldY += player.vy;
 
-  // ✅ Facing: always velocity-based turning!
+  // ✅ Velocity-based facing (classic turning)
   player.angle = Math.atan2(player.vy, player.vx);
 
   // Keep inside map
@@ -249,15 +249,11 @@ function draw() {
     ctx.stroke();
   }
 
-  // HUD
+  // ✅ HUD (without boost cooldown label)
   ctx.fillStyle = 'black';
   ctx.font = '20px Arial';
   ctx.fillText(`Score: ${player.score}`, 10, 30);
   ctx.fillText(`Animal: ${animal.name} (${animal.biome})`, 10, 55);
-  if (!canBoost) {
-    ctx.fillStyle = 'gray';
-    ctx.fillText(`Boost on cooldown...`, 10, 80);
-  }
 }
 
 function loop() {
