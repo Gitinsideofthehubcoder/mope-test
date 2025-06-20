@@ -38,7 +38,7 @@ let player = {
   vy: 0,
   angle: 0,
   score: 0,
-  boosting: false   // ✅ flag: true while boost is active
+  boosting: false   // true while boost active
 };
 
 // Mouse
@@ -49,11 +49,11 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Boost: impulse + flag for speed limit
+// Boost: impulse + boost flag
 let canBoost = true;
 let boostHeld = false;
 const boostCooldown = 1500;   // ms
-const boostImpulse = 10.0;    // stronger push
+const boostImpulse = 10.0;    // strong push
 
 function startBoost() {
   if (!canBoost) return;
@@ -71,11 +71,11 @@ function startBoost() {
     player.vy += dirY * boostImpulse;
   }
 
-  player.boosting = true; // ✅ allow higher speed limit
+  player.boosting = true; // allow higher speed
 
   setTimeout(() => {
     player.boosting = false;
-  }, 300); // short boost duration
+  }, 300); // boost duration
 
   canBoost = false;
   setTimeout(() => {
@@ -149,7 +149,7 @@ function update() {
 
   const speedFactor = Math.min(dist / 100, 1);
 
-  // ✅ Steering: weaker during boost for smoother drift
+  // Steering: weaker during boost for gentle drift
   if (dist > 1) {
     const dirX = dx / dist;
     const dirY = dy / dist;
@@ -158,30 +158,33 @@ function update() {
     player.vy += dirY * steer;
   }
 
-  // Trigger boost if holding
+  // Boost trigger
   if (boostHeld && canBoost) {
     startBoost();
   }
 
-  // Softer friction keeps smooth motion
+  // Friction
   player.vx *= 0.93;
   player.vy *= 0.93;
 
-  // ✅ Allow higher speed limit while boosting
+  // Allow higher speed when boosting
   const vTotal = Math.hypot(player.vx, player.vy);
   const speedLimit = player.boosting ? player.maxSpeed * 2 : player.maxSpeed;
-
   if (vTotal > speedLimit) {
     player.vx = (player.vx / vTotal) * speedLimit;
     player.vy = (player.vy / vTotal) * speedLimit;
   }
 
-  // Update position and facing
+  // Move
   player.worldX += player.vx;
   player.worldY += player.vy;
-  player.angle = Math.atan2(player.vy, player.vx);
 
-  // Stay in map bounds
+  // ✅ NEW: Free spin — face mouse, not velocity!
+  const faceDX = mouse.x - centerX;
+  const faceDY = mouse.y - centerY;
+  player.angle = Math.atan2(faceDY, faceDX);
+
+  // Keep inside map
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
 
