@@ -71,7 +71,7 @@ function startBoost() {
     player.vy += dirY * boostImpulse;
   }
 
-  player.boosting = true; // allow higher speed
+  player.boosting = true;
 
   setTimeout(() => {
     player.boosting = false;
@@ -179,10 +179,16 @@ function update() {
   player.worldX += player.vx;
   player.worldY += player.vy;
 
-  // ✅ NEW: Free spin — face mouse, not velocity!
-  const faceDX = mouse.x - centerX;
-  const faceDY = mouse.y - centerY;
-  player.angle = Math.atan2(faceDY, faceDX);
+  // ✅ New: blended facing — velocity & mouse
+  const velAngle = Math.atan2(player.vy, player.vx);
+  const mouseDX = mouse.x - centerX;
+  const mouseDY = mouse.y - centerY;
+  const mouseAngle = Math.atan2(mouseDY, mouseDX);
+  const speed = Math.hypot(player.vx, player.vy);
+  const t = Math.min(speed / player.maxSpeed, 1); // 0 slow, 1 fast
+  // Blend angles carefully — keep smooth rotation
+  const angleDiff = ((velAngle - mouseAngle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+  player.angle = mouseAngle + angleDiff * t;
 
   // Keep inside map
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
