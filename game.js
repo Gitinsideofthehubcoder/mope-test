@@ -1,10 +1,11 @@
-// Import animals
+// Import animals list with explicit tiers
 import { animals } from './animals.js';
 
 // Canvas setup
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// Auto fullscreen
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -24,13 +25,18 @@ animals.forEach(animal => {
 const worldWidth = 5000;
 const worldHeight = 5000;
 
-// Constant hitbox radius
+// Hitbox radius: constant for all animals
 const HITBOX_RADIUS = 40;
 
-// Player setup — robust tier start!
+// ✅ Robust player spawn: use tier instead of hard index
 const initialTier = 1;
+const initialLevel = animals.findIndex(a => a.tier === initialTier);
+if (initialLevel === -1) {
+  console.error("ERROR: No Tier 1 animal found in animals.js! Fix your list!");
+}
+
 let player = {
-  level: animals.findIndex(a => a.tier === initialTier), // robust
+  level: initialLevel,
   worldX: worldWidth / 2,
   worldY: worldHeight / 2,
   radius: HITBOX_RADIUS,
@@ -43,7 +49,7 @@ let player = {
   boosting: false
 };
 
-// Mouse
+// Mouse setup
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
@@ -51,7 +57,7 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// Boost
+// Boost setup
 let canBoost = true;
 let boostHeld = false;
 const boostCooldown = 1500;
@@ -59,22 +65,31 @@ const boostImpulse = 10.0;
 
 function startBoost() {
   if (!canBoost) return;
+
   let velAngle = Math.atan2(player.vy, player.vx);
   const speed = Math.hypot(player.vx, player.vy);
   if (speed < 0.1) velAngle = player.angle;
+
   const dirX = Math.cos(velAngle);
   const dirY = Math.sin(velAngle);
   player.vx += dirX * boostImpulse;
   player.vy += dirY * boostImpulse;
+
   player.boosting = true;
   setTimeout(() => { player.boosting = false; }, 300);
+
   canBoost = false;
   setTimeout(() => { canBoost = true; }, boostCooldown);
 }
-window.addEventListener('mousedown', (e) => { if (e.button === 0) boostHeld = true; });
-window.addEventListener('mouseup', (e) => { if (e.button === 0) boostHeld = false; });
 
-// Food
+window.addEventListener('mousedown', (e) => {
+  if (e.button === 0) boostHeld = true;
+});
+window.addEventListener('mouseup', (e) => {
+  if (e.button === 0) boostHeld = false;
+});
+
+// Food dots
 const FOOD_COUNT = 300;
 let foods = Array.from({ length: FOOD_COUNT }, () => ({
   x: Math.random() * worldWidth,
@@ -104,6 +119,10 @@ function openUpgradeMenu(options) {
     btn.style.margin = '5px';
     btn.onclick = () => {
       player.level = animals.findIndex(a => a.name === opt.name);
+      if (player.level === -1) {
+        console.error(`ERROR: Chosen animal ${opt.name} not found!`);
+        return;
+      }
       player.radius = HITBOX_RADIUS;
       player.baseSpeed = 3.0 + player.level * 0.05;
       player.maxSpeed = 5.0 + player.level * 0.05;
@@ -117,6 +136,10 @@ function openUpgradeMenu(options) {
 // ✅ Tier-based evolution
 function checkEvolution() {
   const current = animals[player.level];
+  if (!current) {
+    console.error("ERROR: Invalid player.level -> no animal exists!");
+    return;
+  }
   const nextTier = current.tier + 1;
   const nextOptions = animals.filter(a =>
     a.tier === nextTier && a.evolveScore <= player.score
@@ -134,6 +157,7 @@ function update() {
   const dist = Math.hypot(dx, dy);
 
   const speedFactor = Math.min(dist / 100, 1);
+
   if (dist > 1) {
     const dirX = dx / dist;
     const dirY = dy / dist;
@@ -143,6 +167,7 @@ function update() {
   }
 
   if (boostHeld && canBoost) startBoost();
+
   player.vx *= 0.93;
   player.vy *= 0.93;
 
@@ -170,6 +195,7 @@ function update() {
       player.score += 1;
     }
   });
+
   foods.forEach(f => {
     if (f.absorbing) {
       const dx = player.worldX - f.x;
@@ -179,6 +205,7 @@ function update() {
       f.alpha -= 0.1;
     }
   });
+
   foods = foods.filter(f => f.alpha > 0);
   while (foods.length < FOOD_COUNT) {
     foods.push({
@@ -189,17 +216,20 @@ function update() {
       alpha: 1.0
     });
   }
+
   checkEvolution();
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   const offsetX = player.worldX - canvas.width / 2;
   const offsetY = player.worldY - canvas.height / 2;
 
   ctx.fillStyle = "#cceeff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  ctx.fillStyle = 'green';
   foods.forEach(f => {
     const screenX = f.x - offsetX;
     const screenY = f.y - offsetY;
@@ -211,8 +241,12 @@ function draw() {
   ctx.globalAlpha = 1.0;
 
   const animal = animals[player.level];
+  if (!animal) {
+    console.error("ERROR: player.level is invalid -> no animal found!");
+    return;
+  }
   const img = animalImages[animal.name];
-  if (img.complete) {
+  if (img && img.complete && img.naturalWidth > 0) {
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate(player.angle);
@@ -225,13 +259,15 @@ function draw() {
     );
     ctx.restore();
   } else {
-    ctx.fillStyle = animal.color || 'gray';
+    // ✅ Fallback circle if no image yet
+    ctx.fillStyle = "gray";
     ctx.beginPath();
     ctx.arc(canvas.width / 2, canvas.height / 2, player.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   }
 
+  // Debug hitbox outline
   ctx.save();
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.strokeStyle = "red";
