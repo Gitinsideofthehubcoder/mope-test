@@ -95,7 +95,7 @@ const FOOD_COUNT = 300;
 let foods = Array.from({ length: FOOD_COUNT }, () => ({
   x: Math.random() * worldWidth,
   y: Math.random() * worldHeight,
-  radius: 5 + Math.random() * 5,
+  radius: 10 + Math.random() * 5,
   absorbing: false,   // ✅ for fade/fly effect
   alpha: 1.0          // ✅ for fade
 }));
@@ -218,7 +218,7 @@ function update() {
     foods.push({
       x: Math.random() * worldWidth,
       y: Math.random() * worldHeight,
-      radius: 5 + Math.random() * 5,
+      radius: 10 + Math.random() * 5,
       absorbing: false,
       alpha: 1.0
     });
