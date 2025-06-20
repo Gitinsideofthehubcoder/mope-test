@@ -32,12 +32,13 @@ let player = {
   worldY: worldHeight / 2,
   radius: 40,
 
-  baseSpeed: 3.0,   // 🟢 normal comfortable cruising speed
-  maxSpeed: 5.0,    // 🟢 absolute top speed limit
+  baseSpeed: 3.0,   // normal cruising speed
+  maxSpeed: 5.0,    // top speed limit
   vx: 0,
   vy: 0,
   angle: 0,
-  score: 0
+  score: 0,
+  boosting: false   // ✅ new flag: are we boosting right now?
 };
 
 // Mouse
@@ -48,11 +49,11 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Boost: one-time impulse
+// ✅ Boost: impulse + temporary boost flag
 let canBoost = true;
 let boostHeld = false;
 const boostCooldown = 1500;   // ms
-const boostImpulse = 6.0;     // one-time push
+const boostImpulse = 10.0;    // ✅ stronger push!
 
 function startBoost() {
   if (!canBoost) return;
@@ -69,6 +70,13 @@ function startBoost() {
     player.vx += dirX * boostImpulse;
     player.vy += dirY * boostImpulse;
   }
+
+  player.boosting = true; // ✅ allow higher max speed
+
+  // End boost after short time
+  setTimeout(() => {
+    player.boosting = false;
+  }, 300); // e.g. 300 ms
 
   canBoost = false;
   setTimeout(() => {
@@ -114,7 +122,7 @@ function openUpgradeMenu(options) {
       player.level = animals.findIndex(a => a.name === opt.name);
       player.radius = 40 + player.level * 2;
       player.baseSpeed = 3.0 + player.level * 0.05;
-      player.maxSpeed = 5.0 + player.level * 0.05; // consistent upgrade
+      player.maxSpeed = 5.0 + player.level * 0.05;
       menu.style.display = 'none';
     };
     menu.appendChild(btn);
@@ -142,39 +150,40 @@ function update() {
 
   const speedFactor = Math.min(dist / 100, 1);
 
-  // ✅ STRONGER steering force for clear acceleration
+  // ✅ Stronger steering for clear acceleration
   if (dist > 1) {
     const dirX = dx / dist;
     const dirY = dy / dist;
-    const steer = 0.6 * speedFactor; // ⏫ more push per frame!
+    const steer = 0.6 * speedFactor;
     player.vx += dirX * steer;
     player.vy += dirY * steer;
   }
 
-  // ✅ Trigger boost if holding and ready
+  // Trigger boost if holding
   if (boostHeld && canBoost) {
     startBoost();
   }
 
-  // ✅ Softer friction: keeps speed higher
+  // Softer friction keeps speed higher
   player.vx *= 0.93;
   player.vy *= 0.93;
 
-  // ✅ Clamp to clear max speed limit (independent of mouse distance!)
+  // ✅ Allow higher speed limit during boost
   const vTotal = Math.hypot(player.vx, player.vy);
-  if (vTotal > player.maxSpeed) {
-    player.vx = (player.vx / vTotal) * player.maxSpeed;
-    player.vy = (player.vy / vTotal) * player.maxSpeed;
+  const speedLimit = player.boosting ? player.maxSpeed * 2 : player.maxSpeed;
+
+  if (vTotal > speedLimit) {
+    player.vx = (player.vx / vTotal) * speedLimit;
+    player.vy = (player.vy / vTotal) * speedLimit;
   }
 
-  // Update position
+  // Move
   player.worldX += player.vx;
   player.worldY += player.vy;
 
-  // Facing angle follows current velocity
   player.angle = Math.atan2(player.vy, player.vx);
 
-  // Keep inside world bounds
+  // Keep inside map
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
 
