@@ -58,9 +58,15 @@ const boostImpulse = 10.0;    // strong push
 function startBoost() {
   if (!canBoost) return;
 
-  // ✅ Use the facing angle for boost impulse
-  const dirX = Math.cos(player.angle);
-  const dirY = Math.sin(player.angle);
+  // ✅ Use current velocity direction, fallback to facing if speed is too low
+  let velAngle = Math.atan2(player.vy, player.vx);
+  const speed = Math.hypot(player.vx, player.vy);
+  if (speed < 0.1) {
+    velAngle = player.angle; // fallback: use facing direction
+  }
+
+  const dirX = Math.cos(velAngle);
+  const dirY = Math.sin(velAngle);
   player.vx += dirX * boostImpulse;
   player.vy += dirY * boostImpulse;
 
@@ -142,7 +148,7 @@ function update() {
 
   const speedFactor = Math.min(dist / 100, 1);
 
-  // Steering: weaker during boost for smoother drift
+  // ✅ Steering: weaker during boost for natural drift
   if (dist > 1) {
     const dirX = dx / dist;
     const dirY = dy / dist;
@@ -172,10 +178,8 @@ function update() {
   player.worldX += player.vx;
   player.worldY += player.vy;
 
-  // ✅ Always face mouse for consistent aiming — independent of velocity
-  const faceDX = mouse.x - centerX;
-  const faceDY = mouse.y - centerY;
-  player.angle = Math.atan2(faceDY, faceDX);
+  // ✅ Facing: always velocity-based turning!
+  player.angle = Math.atan2(player.vy, player.vx);
 
   // Keep inside map
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
