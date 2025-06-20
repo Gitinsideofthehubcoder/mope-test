@@ -58,18 +58,11 @@ const boostImpulse = 10.0;    // strong push
 function startBoost() {
   if (!canBoost) return;
 
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  const dx = mouse.x - centerX;
-  const dy = mouse.y - centerY;
-  const dist = Math.hypot(dx, dy);
-
-  if (dist > 1) {
-    const dirX = dx / dist;
-    const dirY = dy / dist;
-    player.vx += dirX * boostImpulse;
-    player.vy += dirY * boostImpulse;
-  }
+  // ✅ Use the facing angle for boost impulse
+  const dirX = Math.cos(player.angle);
+  const dirY = Math.sin(player.angle);
+  player.vx += dirX * boostImpulse;
+  player.vy += dirY * boostImpulse;
 
   player.boosting = true;
 
@@ -149,7 +142,7 @@ function update() {
 
   const speedFactor = Math.min(dist / 100, 1);
 
-  // Steering: weaker during boost for gentle drift
+  // Steering: weaker during boost for smoother drift
   if (dist > 1) {
     const dirX = dx / dist;
     const dirY = dy / dist;
@@ -179,16 +172,10 @@ function update() {
   player.worldX += player.vx;
   player.worldY += player.vy;
 
-  // ✅ New: blended facing — velocity & mouse
-  const velAngle = Math.atan2(player.vy, player.vx);
-  const mouseDX = mouse.x - centerX;
-  const mouseDY = mouse.y - centerY;
-  const mouseAngle = Math.atan2(mouseDY, mouseDX);
-  const speed = Math.hypot(player.vx, player.vy);
-  const t = Math.min(speed / player.maxSpeed, 1); // 0 slow, 1 fast
-  // Blend angles carefully — keep smooth rotation
-  const angleDiff = ((velAngle - mouseAngle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-  player.angle = mouseAngle + angleDiff * t;
+  // ✅ Always face mouse for consistent aiming — independent of velocity
+  const faceDX = mouse.x - centerX;
+  const faceDY = mouse.y - centerY;
+  player.angle = Math.atan2(faceDY, faceDX);
 
   // Keep inside map
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
