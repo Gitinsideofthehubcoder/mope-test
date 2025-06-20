@@ -5,7 +5,6 @@ import { animals } from './animals.js';
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Auto fullscreen
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -25,15 +24,16 @@ animals.forEach(animal => {
 const worldWidth = 5000;
 const worldHeight = 5000;
 
-// Hitbox radius: same for all animals!
+// Constant hitbox radius
 const HITBOX_RADIUS = 40;
 
-// Player
+// Player setup — robust tier start!
+const initialTier = 1;
 let player = {
-  level: 0,
+  level: animals.findIndex(a => a.tier === initialTier), // robust
   worldX: worldWidth / 2,
   worldY: worldHeight / 2,
-  radius: HITBOX_RADIUS, // use hitbox
+  radius: HITBOX_RADIUS,
   baseSpeed: 3.0,
   maxSpeed: 5.0,
   vx: 0,
@@ -59,35 +59,20 @@ const boostImpulse = 10.0;
 
 function startBoost() {
   if (!canBoost) return;
-
   let velAngle = Math.atan2(player.vy, player.vx);
   const speed = Math.hypot(player.vx, player.vy);
   if (speed < 0.1) velAngle = player.angle;
-
   const dirX = Math.cos(velAngle);
   const dirY = Math.sin(velAngle);
   player.vx += dirX * boostImpulse;
   player.vy += dirY * boostImpulse;
-
   player.boosting = true;
-
-  setTimeout(() => {
-    player.boosting = false;
-  }, 300);
-
+  setTimeout(() => { player.boosting = false; }, 300);
   canBoost = false;
-  setTimeout(() => {
-    canBoost = true;
-  }, boostCooldown);
+  setTimeout(() => { canBoost = true; }, boostCooldown);
 }
-
-// Hold left click to repeat boost
-window.addEventListener('mousedown', (e) => {
-  if (e.button === 0) boostHeld = true;
-});
-window.addEventListener('mouseup', (e) => {
-  if (e.button === 0) boostHeld = false;
-});
+window.addEventListener('mousedown', (e) => { if (e.button === 0) boostHeld = true; });
+window.addEventListener('mouseup', (e) => { if (e.button === 0) boostHeld = false; });
 
 // Food
 const FOOD_COUNT = 300;
@@ -119,7 +104,7 @@ function openUpgradeMenu(options) {
     btn.style.margin = '5px';
     btn.onclick = () => {
       player.level = animals.findIndex(a => a.name === opt.name);
-      player.radius = HITBOX_RADIUS; // constant hitbox!
+      player.radius = HITBOX_RADIUS;
       player.baseSpeed = 3.0 + player.level * 0.05;
       player.maxSpeed = 5.0 + player.level * 0.05;
       menu.style.display = 'none';
@@ -129,14 +114,15 @@ function openUpgradeMenu(options) {
   menu.style.display = 'block';
 }
 
+// ✅ Tier-based evolution
 function checkEvolution() {
   const current = animals[player.level];
+  const nextTier = current.tier + 1;
   const nextOptions = animals.filter(a =>
-    a.evolveScore > current.evolveScore &&
-    a.evolveScore <= player.score
+    a.tier === nextTier && a.evolveScore <= player.score
   );
   if (nextOptions.length > 0 && menu.style.display === 'none') {
-    openUpgradeMenu(nextOptions.slice(0, 4));
+    openUpgradeMenu(nextOptions);
   }
 }
 
@@ -148,8 +134,6 @@ function update() {
   const dist = Math.hypot(dx, dy);
 
   const speedFactor = Math.min(dist / 100, 1);
-
-  // Steering: weaker during boost for drift
   if (dist > 1) {
     const dirX = dx / dist;
     const dirY = dy / dist;
@@ -158,16 +142,10 @@ function update() {
     player.vy += dirY * steer;
   }
 
-  // Boost trigger
-  if (boostHeld && canBoost) {
-    startBoost();
-  }
-
-  // Friction
+  if (boostHeld && canBoost) startBoost();
   player.vx *= 0.93;
   player.vy *= 0.93;
 
-  // Limit speed
   const vTotal = Math.hypot(player.vx, player.vy);
   const speedLimit = player.boosting ? player.maxSpeed * 2 : player.maxSpeed;
   if (vTotal > speedLimit) {
@@ -175,21 +153,14 @@ function update() {
     player.vy = (player.vy / vTotal) * speedLimit;
   }
 
-  // Move
   player.worldX += player.vx;
   player.worldY += player.vy;
-
-  // Velocity turning
   player.angle = Math.atan2(player.vy, player.vx);
-
-  // Enforce constant hitbox radius
   player.radius = HITBOX_RADIUS;
 
-  // Keep inside map
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
 
-  // Mark food as absorbing
   foods.forEach(f => {
     const fx = player.worldX - f.x;
     const fy = player.worldY - f.y;
@@ -199,8 +170,6 @@ function update() {
       player.score += 1;
     }
   });
-
-  // Update absorbing food
   foods.forEach(f => {
     if (f.absorbing) {
       const dx = player.worldX - f.x;
@@ -210,11 +179,7 @@ function update() {
       f.alpha -= 0.1;
     }
   });
-
-  // Remove faded food
   foods = foods.filter(f => f.alpha > 0);
-
-  // Replenish
   while (foods.length < FOOD_COUNT) {
     foods.push({
       x: Math.random() * worldWidth,
@@ -224,20 +189,17 @@ function update() {
       alpha: 1.0
     });
   }
-
   checkEvolution();
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   const offsetX = player.worldX - canvas.width / 2;
   const offsetY = player.worldY - canvas.height / 2;
 
   ctx.fillStyle = "#cceeff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = 'green';
   foods.forEach(f => {
     const screenX = f.x - offsetX;
     const screenY = f.y - offsetY;
@@ -263,14 +225,13 @@ function draw() {
     );
     ctx.restore();
   } else {
-    ctx.fillStyle = animal.color;
+    ctx.fillStyle = animal.color || 'gray';
     ctx.beginPath();
     ctx.arc(canvas.width / 2, canvas.height / 2, player.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   }
 
-  // ✅ Debug: draw hitbox
   ctx.save();
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.strokeStyle = "red";
@@ -280,11 +241,10 @@ function draw() {
   ctx.stroke();
   ctx.restore();
 
-  // HUD
   ctx.fillStyle = 'black';
   ctx.font = '20px Arial';
   ctx.fillText(`Score: ${player.score}`, 10, 30);
-  ctx.fillText(`Animal: ${animal.name} (${animal.biome})`, 10, 55);
+  ctx.fillText(`Animal: ${animal.name} (Tier ${animal.tier})`, 10, 55);
 }
 
 function loop() {
