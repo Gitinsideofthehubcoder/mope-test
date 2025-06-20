@@ -38,7 +38,7 @@ let player = {
   vy: 0,
   angle: 0,
   score: 0,
-  boosting: false   // ✅ new flag: are we boosting right now?
+  boosting: false   // ✅ flag: true while boost is active
 };
 
 // Mouse
@@ -49,11 +49,11 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// ✅ Boost: impulse + temporary boost flag
+// ✅ Boost: impulse + flag for speed limit
 let canBoost = true;
 let boostHeld = false;
 const boostCooldown = 1500;   // ms
-const boostImpulse = 10.0;    // ✅ stronger push!
+const boostImpulse = 10.0;    // stronger push
 
 function startBoost() {
   if (!canBoost) return;
@@ -71,12 +71,11 @@ function startBoost() {
     player.vy += dirY * boostImpulse;
   }
 
-  player.boosting = true; // ✅ allow higher max speed
+  player.boosting = true; // ✅ allow higher speed limit
 
-  // End boost after short time
   setTimeout(() => {
     player.boosting = false;
-  }, 300); // e.g. 300 ms
+  }, 300); // short boost duration
 
   canBoost = false;
   setTimeout(() => {
@@ -150,11 +149,11 @@ function update() {
 
   const speedFactor = Math.min(dist / 100, 1);
 
-  // ✅ Stronger steering for clear acceleration
+  // ✅ Steering: weaker during boost for smoother drift
   if (dist > 1) {
     const dirX = dx / dist;
     const dirY = dy / dist;
-    const steer = 0.6 * speedFactor;
+    const steer = player.boosting ? 0.3 * speedFactor : 0.6 * speedFactor;
     player.vx += dirX * steer;
     player.vy += dirY * steer;
   }
@@ -164,11 +163,11 @@ function update() {
     startBoost();
   }
 
-  // Softer friction keeps speed higher
+  // Softer friction keeps smooth motion
   player.vx *= 0.93;
   player.vy *= 0.93;
 
-  // ✅ Allow higher speed limit during boost
+  // ✅ Allow higher speed limit while boosting
   const vTotal = Math.hypot(player.vx, player.vy);
   const speedLimit = player.boosting ? player.maxSpeed * 2 : player.maxSpeed;
 
@@ -177,13 +176,12 @@ function update() {
     player.vy = (player.vy / vTotal) * speedLimit;
   }
 
-  // Move
+  // Update position and facing
   player.worldX += player.vx;
   player.worldY += player.vy;
-
   player.angle = Math.atan2(player.vy, player.vx);
 
-  // Keep inside map
+  // Stay in map bounds
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
 
