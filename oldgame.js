@@ -32,13 +32,13 @@ let player = {
   worldY: worldHeight / 2,
   radius: 40,
 
-  baseSpeed: 3.0,   // normal cruising speed
-  maxSpeed: 5.0,    // top speed limit
+  baseSpeed: 3.0,
+  maxSpeed: 5.0,
   vx: 0,
   vy: 0,
   angle: 0,
   score: 0,
-  boosting: false   // true while boost active
+  boosting: false
 };
 
 // Mouse
@@ -49,16 +49,16 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// Boost: impulse + boost flag
+// Boost: impulse + flag
 let canBoost = true;
 let boostHeld = false;
-const boostCooldown = 1500;   // ms
-const boostImpulse = 10.0;    // strong push
+const boostCooldown = 1500;
+const boostImpulse = 10.0;
 
 function startBoost() {
   if (!canBoost) return;
 
-  // ✅ Use current velocity direction; fallback to facing if nearly stopped
+  // ✅ Use current velocity direction; fallback to facing if stopped
   let velAngle = Math.atan2(player.vy, player.vx);
   const speed = Math.hypot(player.vx, player.vy);
   if (speed < 0.1) {
@@ -95,7 +95,9 @@ const FOOD_COUNT = 300;
 let foods = Array.from({ length: FOOD_COUNT }, () => ({
   x: Math.random() * worldWidth,
   y: Math.random() * worldHeight,
-  radius: 5 + Math.random() * 5
+  radius: 15 + Math.random() * 5,
+  absorbing: false,   // ✅ for fade/fly effect
+  alpha: 1.0          // ✅ for fade
 }));
 
 // Upgrade menu
@@ -148,7 +150,7 @@ function update() {
 
   const speedFactor = Math.min(dist / 100, 1);
 
-  // Steering: weaker during boost for natural drift
+  // Steering: weaker during boost for drift
   if (dist > 1) {
     const dirX = dx / dist;
     const dirY = dy / dist;
@@ -166,7 +168,7 @@ function update() {
   player.vx *= 0.93;
   player.vy *= 0.93;
 
-  // Allow higher speed when boosting
+  // Speed limit
   const vTotal = Math.hypot(player.vx, player.vy);
   const speedLimit = player.boosting ? player.maxSpeed * 2 : player.maxSpeed;
   if (vTotal > speedLimit) {
@@ -174,35 +176,51 @@ function update() {
     player.vy = (player.vy / vTotal) * speedLimit;
   }
 
-  // Move
+  // Move player
   player.worldX += player.vx;
   player.worldY += player.vy;
 
-  // ✅ Velocity-based facing (classic turning)
+  // ✅ Velocity-based facing
   player.angle = Math.atan2(player.vy, player.vx);
 
   // Keep inside map
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
 
-  // Eat food
-  foods = foods.filter(f => {
+  // Mark food as absorbing when eaten
+  foods.forEach(f => {
     const fx = player.worldX - f.x;
     const fy = player.worldY - f.y;
     const d = Math.hypot(fx, fy);
-    if (d < player.radius + f.radius) {
+    if (!f.absorbing && d < player.radius + f.radius) {
+      f.absorbing = true;
       player.radius += 0.2;
       player.score += 1;
-      return false;
     }
-    return true;
   });
 
+  // ✅ Update absorbing food: fly + fade, no shrink
+  foods.forEach(f => {
+    if (f.absorbing) {
+      const dx = player.worldX - f.x;
+      const dy = player.worldY - f.y;
+      f.x += dx * 0.2;
+      f.y += dy * 0.2;
+      f.alpha -= 0.1; // fade fast
+    }
+  });
+
+  // Remove faded food
+  foods = foods.filter(f => f.alpha > 0);
+
+  // Replenish if needed
   while (foods.length < FOOD_COUNT) {
     foods.push({
       x: Math.random() * worldWidth,
       y: Math.random() * worldHeight,
-      radius: 5 + Math.random() * 5
+      radius: 15 + Math.random() * 5,
+      absorbing: false,
+      alpha: 1.0
     });
   }
 
@@ -222,10 +240,12 @@ function draw() {
   foods.forEach(f => {
     const screenX = f.x - offsetX;
     const screenY = f.y - offsetY;
+    ctx.globalAlpha = f.alpha;
     ctx.beginPath();
-    ctx.arc(screenX, screenY, f.radius, 0, Math.PI * 2);
+    ctx.arc(screenX, screenY, f.radius, 0, Math.PI * 2); // ✅ same radius
     ctx.fill();
   });
+  ctx.globalAlpha = 1.0; // reset
 
   const animal = animals[player.level];
   const img = animalImages[animal.name];
@@ -249,7 +269,7 @@ function draw() {
     ctx.stroke();
   }
 
-  // ✅ HUD (without boost cooldown label)
+  // HUD (no boost cooldown label)
   ctx.fillStyle = 'black';
   ctx.font = '20px Arial';
   ctx.fillText(`Score: ${player.score}`, 10, 30);
