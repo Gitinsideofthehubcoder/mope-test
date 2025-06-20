@@ -58,20 +58,13 @@ const boostImpulse = 10.0;    // strong push
 function startBoost() {
   if (!canBoost) return;
 
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  const dx = mouse.x - centerX;
-  const dy = mouse.y - centerY;
-  const dist = Math.hypot(dx, dy);
+  // ✅ Use the facing angle for boost impulse
+  const dirX = Math.cos(player.angle);
+  const dirY = Math.sin(player.angle);
+  player.vx += dirX * boostImpulse;
+  player.vy += dirY * boostImpulse;
 
-  if (dist > 1) {
-    const dirX = dx / dist;
-    const dirY = dy / dist;
-    player.vx += dirX * boostImpulse;
-    player.vy += dirY * boostImpulse;
-  }
-
-  player.boosting = true; // allow higher speed
+  player.boosting = true;
 
   setTimeout(() => {
     player.boosting = false;
@@ -149,7 +142,7 @@ function update() {
 
   const speedFactor = Math.min(dist / 100, 1);
 
-  // Steering: weaker during boost for gentle drift
+  // Steering: weaker during boost for smoother drift
   if (dist > 1) {
     const dirX = dx / dist;
     const dirY = dy / dist;
@@ -179,7 +172,7 @@ function update() {
   player.worldX += player.vx;
   player.worldY += player.vy;
 
-  // ✅ NEW: Free spin — face mouse, not velocity!
+  // ✅ Always face mouse for consistent aiming — independent of velocity
   const faceDX = mouse.x - centerX;
   const faceDY = mouse.y - centerY;
   player.angle = Math.atan2(faceDY, faceDX);
