@@ -1,4 +1,4 @@
-// Import animals
+// Import animals list with explicit tiers
 import { animals } from './animals.js';
 
 // Canvas setup
@@ -25,13 +25,21 @@ animals.forEach(animal => {
 const worldWidth = 5000;
 const worldHeight = 5000;
 
-// Player
+// Hitbox radius: constant for all animals
+const HITBOX_RADIUS = 40;
+
+// ✅ Robust player spawn: use tier instead of hard index
+const initialTier = 1;
+const initialLevel = animals.findIndex(a => a.tier === initialTier);
+if (initialLevel === -1) {
+  console.error("ERROR: No Tier 1 animal found in animals.js! Fix your list!");
+}
+
 let player = {
-  level: 0,
+  level: initialLevel,
   worldX: worldWidth / 2,
   worldY: worldHeight / 2,
-  radius: 40,
-
+  radius: HITBOX_RADIUS,
   baseSpeed: 3.0,
   maxSpeed: 5.0,
   vx: 0,
@@ -41,7 +49,7 @@ let player = {
   boosting: false
 };
 
-// Mouse
+// Mouse setup
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
@@ -49,7 +57,7 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = e.clientY - rect.top;
 });
 
-// Boost: impulse + flag
+// Boost setup
 let canBoost = true;
 let boostHeld = false;
 const boostCooldown = 1500;
@@ -58,12 +66,9 @@ const boostImpulse = 10.0;
 function startBoost() {
   if (!canBoost) return;
 
-  // ✅ Use current velocity direction; fallback to facing if stopped
   let velAngle = Math.atan2(player.vy, player.vx);
   const speed = Math.hypot(player.vx, player.vy);
-  if (speed < 0.1) {
-    velAngle = player.angle;
-  }
+  if (speed < 0.1) velAngle = player.angle;
 
   const dirX = Math.cos(velAngle);
   const dirY = Math.sin(velAngle);
@@ -71,18 +76,12 @@ function startBoost() {
   player.vy += dirY * boostImpulse;
 
   player.boosting = true;
-
-  setTimeout(() => {
-    player.boosting = false;
-  }, 300);
+  setTimeout(() => { player.boosting = false; }, 300);
 
   canBoost = false;
-  setTimeout(() => {
-    canBoost = true;
-  }, boostCooldown);
+  setTimeout(() => { canBoost = true; }, boostCooldown);
 }
 
-// Hold left click to repeat boost
 window.addEventListener('mousedown', (e) => {
   if (e.button === 0) boostHeld = true;
 });
@@ -90,14 +89,14 @@ window.addEventListener('mouseup', (e) => {
   if (e.button === 0) boostHeld = false;
 });
 
-// Food
+// Food dots
 const FOOD_COUNT = 300;
 let foods = Array.from({ length: FOOD_COUNT }, () => ({
   x: Math.random() * worldWidth,
   y: Math.random() * worldHeight,
   radius: 15 + Math.random() * 5,
-  absorbing: false,   // ✅ for fade/fly effect
-  alpha: 1.0          // ✅ for fade
+  absorbing: false,
+  alpha: 1.0
 }));
 
 // Upgrade menu
@@ -120,7 +119,11 @@ function openUpgradeMenu(options) {
     btn.style.margin = '5px';
     btn.onclick = () => {
       player.level = animals.findIndex(a => a.name === opt.name);
-      player.radius = 40 + player.level * 2;
+      if (player.level === -1) {
+        console.error(`ERROR: Chosen animal ${opt.name} not found!`);
+        return;
+      }
+      player.radius = HITBOX_RADIUS;
       player.baseSpeed = 3.0 + player.level * 0.05;
       player.maxSpeed = 5.0 + player.level * 0.05;
       menu.style.display = 'none';
@@ -130,14 +133,19 @@ function openUpgradeMenu(options) {
   menu.style.display = 'block';
 }
 
+// ✅ Tier-based evolution
 function checkEvolution() {
   const current = animals[player.level];
+  if (!current) {
+    console.error("ERROR: Invalid player.level -> no animal exists!");
+    return;
+  }
+  const nextTier = current.tier + 1;
   const nextOptions = animals.filter(a =>
-    a.evolveScore > current.evolveScore &&
-    a.evolveScore <= player.score
+    a.tier === nextTier && a.evolveScore <= player.score
   );
   if (nextOptions.length > 0 && menu.style.display === 'none') {
-    openUpgradeMenu(nextOptions.slice(0, 4));
+    openUpgradeMenu(nextOptions);
   }
 }
 
@@ -150,7 +158,6 @@ function update() {
 
   const speedFactor = Math.min(dist / 100, 1);
 
-  // Steering: weaker during boost for drift
   if (dist > 1) {
     const dirX = dx / dist;
     const dirY = dy / dist;
@@ -159,16 +166,11 @@ function update() {
     player.vy += dirY * steer;
   }
 
-  // Boost trigger
-  if (boostHeld && canBoost) {
-    startBoost();
-  }
+  if (boostHeld && canBoost) startBoost();
 
-  // Friction
   player.vx *= 0.93;
   player.vy *= 0.93;
 
-  // Speed limit
   const vTotal = Math.hypot(player.vx, player.vy);
   const speedLimit = player.boosting ? player.maxSpeed * 2 : player.maxSpeed;
   if (vTotal > speedLimit) {
@@ -176,44 +178,35 @@ function update() {
     player.vy = (player.vy / vTotal) * speedLimit;
   }
 
-  // Move player
   player.worldX += player.vx;
   player.worldY += player.vy;
-
-  // ✅ Velocity-based facing
   player.angle = Math.atan2(player.vy, player.vx);
+  player.radius = HITBOX_RADIUS;
 
-  // Keep inside map
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
 
-  // Mark food as absorbing when eaten
   foods.forEach(f => {
     const fx = player.worldX - f.x;
     const fy = player.worldY - f.y;
     const d = Math.hypot(fx, fy);
     if (!f.absorbing && d < player.radius + f.radius) {
       f.absorbing = true;
-      player.radius += 0.2;
       player.score += 1;
     }
   });
 
-  // ✅ Update absorbing food: fly + fade, no shrink
   foods.forEach(f => {
     if (f.absorbing) {
       const dx = player.worldX - f.x;
       const dy = player.worldY - f.y;
       f.x += dx * 0.2;
       f.y += dy * 0.2;
-      f.alpha -= 0.1; // fade fast
+      f.alpha -= 0.1;
     }
   });
 
-  // Remove faded food
   foods = foods.filter(f => f.alpha > 0);
-
-  // Replenish if needed
   while (foods.length < FOOD_COUNT) {
     foods.push({
       x: Math.random() * worldWidth,
@@ -242,14 +235,18 @@ function draw() {
     const screenY = f.y - offsetY;
     ctx.globalAlpha = f.alpha;
     ctx.beginPath();
-    ctx.arc(screenX, screenY, f.radius, 0, Math.PI * 2); // ✅ same radius
+    ctx.arc(screenX, screenY, f.radius, 0, Math.PI * 2);
     ctx.fill();
   });
-  ctx.globalAlpha = 1.0; // reset
+  ctx.globalAlpha = 1.0;
 
   const animal = animals[player.level];
+  if (!animal) {
+    console.error("ERROR: player.level is invalid -> no animal found!");
+    return;
+  }
   const img = animalImages[animal.name];
-  if (img.complete) {
+  if (img && img.complete && img.naturalWidth > 0) {
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate(player.angle);
@@ -262,18 +259,28 @@ function draw() {
     );
     ctx.restore();
   } else {
-    ctx.fillStyle = animal.color;
+    // ✅ Fallback circle if no image yet
+    ctx.fillStyle = "gray";
     ctx.beginPath();
     ctx.arc(canvas.width / 2, canvas.height / 2, player.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   }
 
-  // HUD (no boost cooldown label)
+  // Debug hitbox outline
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.strokeStyle = "red";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, HITBOX_RADIUS, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
   ctx.fillStyle = 'black';
   ctx.font = '20px Arial';
   ctx.fillText(`Score: ${player.score}`, 10, 30);
-  ctx.fillText(`Animal: ${animal.name} (${animal.biome})`, 10, 55);
+  ctx.fillText(`Animal: ${animal.name} (Tier ${animal.tier})`, 10, 55);
 }
 
 function loop() {
