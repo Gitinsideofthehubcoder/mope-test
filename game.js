@@ -26,7 +26,7 @@ const worldWidth = 5000;
 const worldHeight = 5000;
 
 // Hitbox radius: constant for all animals
-const HITBOX_RADIUS = 30;
+const HITBOX_RADIUS = 40;
 
 // ✅ Robust player spawn: use tier instead of hard index
 const initialTier = 1;
