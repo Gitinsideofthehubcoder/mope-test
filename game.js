@@ -1,4 +1,3 @@
-// Import animals list with explicit tiers
 import { animals } from './animals.js';
 
 const canvas = document.getElementById('gameCanvas');
@@ -25,15 +24,17 @@ const HITBOX_RADIUS = 40;
 const initialTier = 1;
 const initialLevel = animals.findIndex(a => a.tier === initialTier);
 if (initialLevel === -1) {
-  console.error("ERROR: No Tier 1 animal found in animals.js! Fix your list!");
+  console.error("ERROR: No Tier 1 animal found in animals.js!");
 }
+
+const initialAnimal = animals[initialLevel];
 
 let player = {
   level: initialLevel,
   worldX: worldWidth / 2,
   worldY: worldHeight / 2,
   radius: HITBOX_RADIUS,
-  imageRadius: HITBOX_RADIUS * 1.5,
+  imageRadius: HITBOX_RADIUS * (1.2 + initialAnimal.tier * 0.05),  // 👈 Tier-scaled image size
   baseSpeed: 3.0,
   maxSpeed: 5.0,
   vx: 0,
@@ -156,8 +157,7 @@ function update() {
     });
   }
 
-  // ✅ FIXED: Evolution check inserted here
-  checkEvolution();
+  checkEvolution();  // ✅ Ensure evolution works
 }
 
 function draw() {
@@ -222,7 +222,6 @@ function loop() {
   draw();
   requestAnimationFrame(loop);
 }
-
 loop();
 
 const menu = document.createElement('div');
@@ -243,13 +242,14 @@ function openUpgradeMenu(options) {
     btn.textContent = `${opt.name} (${opt.biome})`;
     btn.style.margin = '5px';
     btn.onclick = () => {
-      player.level = animals.findIndex(a => a.name === opt.name);
+      const newAnimal = animals.find(a => a.name === opt.name);
+      player.level = animals.indexOf(newAnimal);
       if (player.level === -1) {
         console.error(`ERROR: Chosen animal ${opt.name} not found!`);
         return;
       }
       player.radius = HITBOX_RADIUS;
-      player.imageRadius = HITBOX_RADIUS * 1.2;
+      player.imageRadius = HITBOX_RADIUS * (1.2 + newAnimal.tier * 0.05);  // 👈 Rescale size
       player.baseSpeed = 3.0 + player.level * 0.05;
       player.maxSpeed = 5.0 + player.level * 0.05;
       menu.style.display = 'none';
