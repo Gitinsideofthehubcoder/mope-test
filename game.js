@@ -1,4 +1,3 @@
-
 // Import animals list with explicit tiers
 import { animals } from './animals.js';
 
@@ -156,6 +155,9 @@ function update() {
       alpha: 1.0
     });
   }
+
+  // ✅ FIXED: Evolution check inserted here
+  checkEvolution();
 }
 
 function draw() {
@@ -222,3 +224,52 @@ function loop() {
 }
 
 loop();
+
+const menu = document.createElement('div');
+menu.style.position = 'absolute';
+menu.style.top = '50%';
+menu.style.left = '50%';
+menu.style.transform = 'translate(-50%, -50%)';
+menu.style.background = 'white';
+menu.style.padding = '20px';
+menu.style.border = '2px solid black';
+menu.style.display = 'none';
+document.body.appendChild(menu);
+
+function openUpgradeMenu(options) {
+  menu.innerHTML = `<h3>Choose your next animal:</h3>`;
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.textContent = `${opt.name} (${opt.biome})`;
+    btn.style.margin = '5px';
+    btn.onclick = () => {
+      player.level = animals.findIndex(a => a.name === opt.name);
+      if (player.level === -1) {
+        console.error(`ERROR: Chosen animal ${opt.name} not found!`);
+        return;
+      }
+      player.radius = HITBOX_RADIUS;
+      player.imageRadius = HITBOX_RADIUS * 1.2;
+      player.baseSpeed = 3.0 + player.level * 0.05;
+      player.maxSpeed = 5.0 + player.level * 0.05;
+      menu.style.display = 'none';
+    };
+    menu.appendChild(btn);
+  });
+  menu.style.display = 'block';
+}
+
+function checkEvolution() {
+  const current = animals[player.level];
+  if (!current) {
+    console.error("ERROR: Invalid player.level -> no animal exists!");
+    return;
+  }
+  const nextTier = current.tier + 1;
+  const nextOptions = animals.filter(a =>
+    a.tier === nextTier && a.evolveScore <= player.score
+  );
+  if (nextOptions.length > 0 && menu.style.display === 'none') {
+    openUpgradeMenu(nextOptions);
+  }
+}
