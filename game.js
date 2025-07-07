@@ -33,7 +33,7 @@ let player = {
   worldX: worldWidth / 2,
   worldY: worldHeight / 2,
   radius: HITBOX_RADIUS,
-  imageRadius: HITBOX_RADIUS * 1.2,
+  imageRadius: HITBOX_RADIUS * 1.5,
   baseSpeed: 3.0,
   maxSpeed: 5.0,
   vx: 0,
