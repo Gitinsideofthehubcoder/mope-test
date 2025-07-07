@@ -19,7 +19,7 @@ animals.forEach(animal => {
 
 const worldWidth = 5000;
 const worldHeight = 5000;
-const HITBOX_RADIUS = 40;
+const HITBOX_RADIUS = 40; // Base hitbox radius
 
 const initialTier = 1;
 const initialLevel = animals.findIndex(a => a.tier === initialTier);
@@ -33,8 +33,8 @@ let player = {
   level: initialLevel,
   worldX: worldWidth / 2,
   worldY: worldHeight / 2,
-  radius: HITBOX_RADIUS,
-  imageRadius: HITBOX_RADIUS * (1.2 + initialAnimal.tier * 0.05),  // 👈 Tier-scaled image size
+  radius: 0, // will be set below
+  imageRadius: 0,
   baseSpeed: 3.0,
   maxSpeed: 5.0,
   vx: 0,
@@ -43,6 +43,12 @@ let player = {
   score: 0,
   boosting: false
 };
+
+function updatePlayerSize(tier) {
+  player.radius = HITBOX_RADIUS + (tier - 1) * 5;
+  player.imageRadius = player.radius * 1.5;
+}
+updatePlayerSize(initialAnimal.tier);
 
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 canvas.addEventListener('mousemove', e => {
@@ -121,7 +127,6 @@ function update() {
   player.worldX += player.vx;
   player.worldY += player.vy;
   player.angle = Math.atan2(player.vy, player.vx);
-  player.radius = HITBOX_RADIUS;
 
   player.worldX = Math.max(player.radius, Math.min(worldWidth - player.radius, player.worldX));
   player.worldY = Math.max(player.radius, Math.min(worldHeight - player.radius, player.worldY));
@@ -157,12 +162,11 @@ function update() {
     });
   }
 
-  checkEvolution();  // ✅ Ensure evolution works
+  checkEvolution();
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   const offsetX = player.worldX - canvas.width / 2;
   const offsetY = player.worldY - canvas.height / 2;
 
@@ -207,7 +211,7 @@ function draw() {
   ctx.strokeStyle = "red";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(0, 0, HITBOX_RADIUS, 0, Math.PI * 2);
+  ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 
@@ -248,8 +252,7 @@ function openUpgradeMenu(options) {
         console.error(`ERROR: Chosen animal ${opt.name} not found!`);
         return;
       }
-      player.radius = HITBOX_RADIUS;
-      player.imageRadius = HITBOX_RADIUS * (1.2 + newAnimal.tier * 0.05);  // 👈 Rescale size
+      updatePlayerSize(newAnimal.tier);
       player.baseSpeed = 3.0 + player.level * 0.05;
       player.maxSpeed = 5.0 + player.level * 0.05;
       menu.style.display = 'none';
