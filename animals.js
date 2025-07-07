@@ -87,9 +87,9 @@ export const animals = [
 
   // Tier 14
   { name: "Elephant", biome: "Land", tier: 14, evolveScore: 8000, icon: "images/elephant.png" },
-  { name: "Giant Squid", biome: "Ocean", tier: 14, evolveScore: 8000, images: "icons/giant_squid.png" },
-  { name: "Blue Whale", biome: "Ocean", tier: 14, evolveScore: 8000, images: "icons/blue_whale.png" },
-  { name: "Mammoth", biome: "Tundra", tier: 14, evolveScore: 8000, images: "icons/mammoth.png" },
+  { name: "Giant Squid", biome: "Ocean", tier: 14, evolveScore: 8000, images: "images/giant_squid.png" },
+  { name: "Blue Whale", biome: "Ocean", tier: 14, evolveScore: 8000, images: "images/blue_whale.png" },
+  { name: "Mammoth", biome: "Tundra", tier: 14, evolveScore: 8000, images: "images/mammoth.png" },
 
   // Tier 15
   { name: "Dragon", biome: "Mythical", tier: 15, evolveScore: 10000, icon: "images/dragon.png" },
