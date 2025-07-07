@@ -19,21 +19,13 @@ animals.forEach(animal => {
 
 const worldWidth = 5000;
 const worldHeight = 5000;
-const HITBOX_RADIUS = 40; // Base hitbox radius
-
-const initialTier = 1;
-const initialLevel = animals.findIndex(a => a.tier === initialTier);
-if (initialLevel === -1) {
-  console.error("ERROR: No Tier 1 animal found in animals.js!");
-}
-
-const initialAnimal = animals[initialLevel];
+const HITBOX_RADIUS = 40;
 
 let player = {
-  level: initialLevel,
+  level: null,
   worldX: worldWidth / 2,
   worldY: worldHeight / 2,
-  radius: 0, // will be set below
+  radius: 0,
   imageRadius: 0,
   baseSpeed: 3.0,
   maxSpeed: 5.0,
@@ -48,7 +40,6 @@ function updatePlayerSize(tier) {
   player.radius = HITBOX_RADIUS + (tier - 1) * 5;
   player.imageRadius = player.radius * 1.5;
 }
-updatePlayerSize(initialAnimal.tier);
 
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 canvas.addEventListener('mousemove', e => {
@@ -96,6 +87,8 @@ let foods = Array.from({ length: FOOD_COUNT }, () => ({
 }));
 
 function update() {
+  if (player.level === null) return;
+
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
   const dx = mouse.x - centerX;
@@ -166,6 +159,8 @@ function update() {
 }
 
 function draw() {
+  if (player.level === null) return;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const offsetX = player.worldX - canvas.width / 2;
   const offsetY = player.worldY - canvas.height / 2;
@@ -239,8 +234,8 @@ menu.style.border = '2px solid black';
 menu.style.display = 'none';
 document.body.appendChild(menu);
 
-function openUpgradeMenu(options) {
-  menu.innerHTML = `<h3>Choose your next animal:</h3>`;
+function openUpgradeMenu(options, isInitial = false) {
+  menu.innerHTML = `<h3>${isInitial ? 'Choose your starting animal:' : 'Choose your next animal:'}</h3>`;
   options.forEach(opt => {
     const btn = document.createElement('button');
     btn.textContent = `${opt.name} (${opt.biome})`;
@@ -276,3 +271,9 @@ function checkEvolution() {
     openUpgradeMenu(nextOptions);
   }
 }
+
+// Show initial selection menu for Tier 1 animals
+window.onload = () => {
+  const tier1Animals = animals.filter(a => a.tier === 1);
+  openUpgradeMenu(tier1Animals, true);
+};
